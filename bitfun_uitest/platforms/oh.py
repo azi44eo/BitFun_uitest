@@ -16,12 +16,14 @@ from bitfun_uitest.platforms.hdc import HdcClient, HdcError
 
 @dataclass(frozen=True)
 class OhAppConfig:
-    bundle: str = "com.huawei.BitFun"
+    bundle: str = "com.develop.opensource.ohpcd.bitfun"
     module: str = "entry"
     ability: str = "EntryAbility"
     target_hint: str = "BitFun"
-    startup_wait_seconds: float = 2.0
+    startup_wait_seconds: float = 5.0
     devtools_wait_seconds: float = 20.0
+    clean_app_data: bool = True
+    permission_wait_seconds: float = 10.0
 
     @classmethod
     def from_env(cls) -> "OhAppConfig":
@@ -30,8 +32,10 @@ class OhAppConfig:
             module=os.environ.get("BITFUN_OH_MODULE", cls.module),
             ability=os.environ.get("BITFUN_OH_ABILITY", cls.ability),
             target_hint=os.environ.get("BITFUN_OH_TARGET_HINT", cls.target_hint),
-            startup_wait_seconds=float(os.environ.get("BITFUN_OH_STARTUP_WAIT_SECONDS", "2")),
+            startup_wait_seconds=float(os.environ.get("BITFUN_OH_STARTUP_WAIT_SECONDS", "5")),
             devtools_wait_seconds=float(os.environ.get("BITFUN_OH_DEVTOOLS_WAIT_SECONDS", "20")),
+            clean_app_data=_env_bool("BITFUN_OH_CLEAN_APP_DATA", default=True),
+            permission_wait_seconds=float(os.environ.get("BITFUN_OH_PERMISSION_WAIT_SECONDS", "10")),
         )
 
 
@@ -92,15 +96,24 @@ class OpenHarmonyDriver(DomTestIdMixin):
         return cls(HdcClient(), OhAppConfig.from_env())
 
     def start(self) -> None:
+        if self.app.clean_app_data:
+            self._reset_app_data()
         self._start_app()
         time.sleep(self.app.startup_wait_seconds)
+        self._allow_startup_permission_dialog()
         self._connect_devtools()
         self.wait_for_test_id("app-layout", timeout=30)
 
     def close(self) -> None:
-        if self._cdp:
-            self._cdp.close()
+        try:
+            if self._cdp:
+                self._cdp.close()
+        finally:
             self._cdp = None
+            if not _truthy_env("BITFUN_KEEP_APP_OPEN"):
+                self._stop_app()
+                if self.app.clean_app_data:
+                    self._clean_app_data()
 
     def evaluate(self, expression: str) -> Any:
         if self._cdp is None:
@@ -117,6 +130,59 @@ class OpenHarmonyDriver(DomTestIdMixin):
             f"aa start -b {self.app.bundle} -m {self.app.module} -a {self.app.ability}",
             timeout=60,
         )
+
+    def _stop_app(self) -> None:
+        stop_command = os.environ.get("BITFUN_OH_APP_STOP_COMMAND")
+        if stop_command:
+            self.hdc.run("shell", stop_command, check=False, timeout=30)
+            return
+
+        self.hdc.run("shell", f"aa force-stop {self.app.bundle}", check=False, timeout=30)
+
+    def _reset_app_data(self) -> None:
+        self._stop_app()
+        self._clean_app_data()
+
+    def _clean_app_data(self) -> None:
+        clean_command = os.environ.get("BITFUN_OH_APP_CLEAN_COMMAND")
+        if clean_command:
+            self.hdc.run("shell", clean_command, check=False, timeout=60)
+            return
+
+        self.hdc.run("shell", f"bm clean -d -n {self.app.bundle}", check=False, timeout=60)
+
+    def _allow_startup_permission_dialog(self) -> None:
+        deadline = time.monotonic() + self.app.permission_wait_seconds
+        while time.monotonic() < deadline:
+            target = self._find_permission_allow_button()
+            if target is not None:
+                x, y = target
+                self.hdc.run("shell", f"uitest uiInput click {x} {y}", check=False, timeout=10)
+                time.sleep(0.5)
+                return
+            time.sleep(0.3)
+
+    def _find_permission_allow_button(self) -> tuple[int, int] | None:
+        output = self.hdc.run("shell", "uitest dumpLayout", check=False, timeout=10)
+        match = re.search(r"DumpLayout saved to:(\S+)", output)
+        if not match:
+            return None
+
+        try:
+            raw_layout = self.hdc.shell(f"cat {match.group(1)}", timeout=10)
+            layout = json.loads(raw_layout)
+        except Exception:
+            return None
+
+        for node in _walk_layout_nodes(layout):
+            attrs = node.get("attributes", {})
+            labels = {
+                str(attrs.get(name, "")).strip()
+                for name in ("text", "originalText", "description")
+            }
+            if labels.intersection({"\u5141\u8bb8", "Allow"}):
+                return _bounds_center(attrs.get("bounds", ""))
+        return None
 
     def _connect_devtools(self) -> None:
         explicit_socket = os.environ.get("BITFUN_OH_DEVTOOLS_SOCKET")
@@ -188,3 +254,35 @@ def _http_json(port: int, path: str) -> Any:
     url = f"http://127.0.0.1:{port}{path}"
     with urllib.request.urlopen(url, timeout=10) as response:
         return json.loads(response.read().decode("utf-8"))
+
+
+def _truthy_env(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _env_bool(name: str, *, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    normalized = raw.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    return default
+
+
+def _walk_layout_nodes(node: dict[str, Any]) -> list[dict[str, Any]]:
+    nodes = [node]
+    for child in node.get("children", []) or []:
+        if isinstance(child, dict):
+            nodes.extend(_walk_layout_nodes(child))
+    return nodes
+
+
+def _bounds_center(bounds: str) -> tuple[int, int] | None:
+    match = re.match(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", bounds)
+    if not match:
+        return None
+    left, top, right, bottom = (int(value) for value in match.groups())
+    return ((left + right) // 2, (top + bottom) // 2)

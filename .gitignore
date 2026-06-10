@@ -5,4 +5,6 @@ __pycache__/
 venv/
 reports/
 screenshots/
-
+local-config.json
+local-config.*.json
+!local-config.example.json

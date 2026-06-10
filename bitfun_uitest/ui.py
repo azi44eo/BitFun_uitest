@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any, Mapping, Protocol
 
 
 @dataclass(frozen=True)
@@ -13,6 +13,7 @@ class UiElement:
     visible: bool
     disabled: bool
     rect: dict[str, float]
+    attributes: dict[str, str]
 
 
 class UiDriver(Protocol):
@@ -22,18 +23,25 @@ class UiDriver(Protocol):
     def close(self) -> None:
         ...
 
-    def wait_for_test_id(self, test_id: str, timeout: float = 15.0) -> UiElement:
+    def wait_for_test_id(
+        self,
+        test_id: str,
+        timeout: float = 15.0,
+        attrs: Mapping[str, str] | None = None,
+    ) -> UiElement:
         ...
 
-    def find_by_test_id(self, test_id: str) -> UiElement | None:
+    def wait_for_test_id_gone(self, test_id: str, timeout: float = 15.0) -> None:
         ...
 
-    def click_by_test_id(self, test_id: str) -> None:
+    def find_by_test_id(self, test_id: str, attrs: Mapping[str, str] | None = None) -> UiElement | None:
         ...
 
-    def fill_by_test_id(self, test_id: str, text: str) -> None:
+    def click_by_test_id(self, test_id: str, attrs: Mapping[str, str] | None = None) -> None:
+        ...
+
+    def fill_by_test_id(self, test_id: str, text: str, attrs: Mapping[str, str] | None = None) -> None:
         ...
 
     def evaluate(self, expression: str) -> Any:
         ...
-

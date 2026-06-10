@@ -24,6 +24,8 @@ class HdcClient:
             check=False,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=timeout,
         )
         output = (completed.stdout or "") + (completed.stderr or "")
@@ -36,4 +38,3 @@ class HdcClient:
 
     def fport(self, local_tcp_port: int, remote: str) -> None:
         self.run("fport", f"tcp:{local_tcp_port}", remote, timeout=10)
-
