@@ -1,0 +1,39 @@
+{
+  "scenario_id": "tool_trace_demo",
+  "description": "展示 thinking、tool call、shell command 的固定响应。",
+  "mode": "chat_completions",
+  "stream": true,
+  "turns": [
+    {
+      "assistant": {
+        "thinking": ["先检查项目结构", "然后读取关键文件"],
+        "tool_calls": [
+          {
+            "id": "call_readme",
+            "name": "read_file",
+            "arguments": {
+              "path": "README.md"
+            }
+          },
+          {
+            "id": "call_git_status",
+            "name": "exec_command",
+            "arguments": {
+              "command": "git status --short"
+            }
+          }
+        ],
+        "shell_commands": [
+          {
+            "command": "git status --short",
+            "output": " M README.md\n?? src/\n?? scenarios/\n",
+            "exit_code": 0
+          }
+        ],
+        "final_text": "我已经检查了项目结构，并读取了关键文件。",
+        "stream_chunks": ["我已经检查了项目结构，", "并读取了关键文件。"]
+      }
+    }
+  ]
+}
+

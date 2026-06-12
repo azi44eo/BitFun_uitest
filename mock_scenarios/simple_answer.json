@@ -1,0 +1,15 @@
+{
+  "scenario_id": "simple_answer",
+  "description": "最小稳定回答，用于验证 BitFun 能连通 mock server。",
+  "mode": "chat_completions",
+  "stream": false,
+  "turns": [
+    {
+      "assistant": {
+        "thinking": ["识别到 simple_answer 场景", "返回固定文本"],
+        "final_text": "这是 BitFun Mock LLM Server 的固定回答。"
+      }
+    }
+  ]
+}
+

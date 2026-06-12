@@ -112,8 +112,6 @@ class OpenHarmonyDriver(DomTestIdMixin):
             self._cdp = None
             if not _truthy_env("BITFUN_KEEP_APP_OPEN"):
                 self._stop_app()
-                if self.app.clean_app_data:
-                    self._clean_app_data()
 
     def evaluate(self, expression: str) -> Any:
         if self._cdp is None:
@@ -123,13 +121,14 @@ class OpenHarmonyDriver(DomTestIdMixin):
     def _start_app(self) -> None:
         start_command = os.environ.get("BITFUN_OH_APP_START_COMMAND")
         if start_command:
-            self.hdc.shell(start_command, timeout=60)
+            self.hdc.shell(_format_start_template(start_command, self.app), timeout=60)
             return
 
-        self.hdc.shell(
-            f"aa start -b {self.app.bundle} -m {self.app.module} -a {self.app.ability}",
-            timeout=60,
-        )
+        command = f"aa start -b {self.app.bundle} -m {self.app.module} -a {self.app.ability}"
+        extra_args = os.environ.get("BITFUN_OH_APP_START_EXTRA_ARGS", "").strip()
+        if extra_args:
+            command = f"{command} {_format_start_template(extra_args, self.app)}"
+        self.hdc.shell(command, timeout=60)
 
     def _stop_app(self) -> None:
         stop_command = os.environ.get("BITFUN_OH_APP_STOP_COMMAND")
@@ -286,3 +285,20 @@ def _bounds_center(bounds: str) -> tuple[int, int] | None:
         return None
     left, top, right, bottom = (int(value) for value in match.groups())
     return ((left + right) // 2, (top + bottom) // 2)
+
+
+def _format_start_template(template: str, app: OhAppConfig) -> str:
+    values = {
+        "bundle": app.bundle,
+        "module": app.module,
+        "ability": app.ability,
+        "llm_base_url": os.environ.get("BITFUN_TEST_LLM_BASE_URL", ""),
+        "llm_model": os.environ.get("BITFUN_TEST_LLM_MODEL", ""),
+        "llm_api_key": os.environ.get("BITFUN_TEST_LLM_API_KEY", ""),
+    }
+    return template.format_map(_MissingValueDict(values))
+
+
+class _MissingValueDict(dict[str, str]):
+    def __missing__(self, key: str) -> str:
+        return "{" + key + "}"
