@@ -1,0 +1,37 @@
+{
+  "scenario_id": "file_and_miniapp_demo",
+  "description": "展示文件修改和 miniapp 生成的固定响应。",
+  "mode": "chat_completions",
+  "stream": true,
+  "turns": [
+    {
+      "assistant": {
+        "thinking": ["先生成文件计划", "再返回 miniapp 文件清单"],
+        "file_changes": [
+          {
+            "path": "miniapp/package.json",
+            "action": "create",
+            "content": "{\n  \"scripts\": {\n    \"dev\": \"vite\"\n  },\n  \"dependencies\": {\n    \"@vitejs/plugin-react\": \"latest\",\n    \"vite\": \"latest\",\n    \"react\": \"latest\",\n    \"react-dom\": \"latest\"\n  },\n  \"devDependencies\": {}\n}\n"
+          },
+          {
+            "path": "miniapp/src/App.tsx",
+            "action": "create",
+            "content": "export default function App() {\n  return <main data-testid=\"mock-miniapp\">BitFun Mock MiniApp</main>;\n}\n"
+          }
+        ],
+        "miniapp": {
+          "title": "BitFun Mock MiniApp",
+          "files": [
+            {
+              "path": "src/App.tsx",
+              "content": "export default function App() {\n  return <main data-testid=\"mock-miniapp\">BitFun Mock MiniApp</main>;\n}\n"
+            }
+          ]
+        },
+        "final_text": "已生成一个固定的 miniapp 示例和对应文件变更。",
+        "stream_chunks": ["已生成一个固定的 miniapp 示例，", "并返回对应文件变更。"]
+      }
+    }
+  ]
+}
+

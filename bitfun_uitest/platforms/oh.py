@@ -110,13 +110,14 @@ class OpenHarmonyDriver(DomTestIdMixin):
     def _start_app(self) -> None:
         start_command = os.environ.get("BITFUN_OH_APP_START_COMMAND")
         if start_command:
-            self.hdc.shell(start_command, timeout=60)
+            self.hdc.shell(_format_start_template(start_command, self.app), timeout=60)
             return
 
-        self.hdc.shell(
-            f"aa start -b {self.app.bundle} -m {self.app.module} -a {self.app.ability}",
-            timeout=60,
-        )
+        command = f"aa start -b {self.app.bundle} -m {self.app.module} -a {self.app.ability}"
+        extra_args = os.environ.get("BITFUN_OH_APP_START_EXTRA_ARGS", "").strip()
+        if extra_args:
+            command = f"{command} {_format_start_template(extra_args, self.app)}"
+        self.hdc.shell(command, timeout=60)
 
     def _connect_devtools(self) -> None:
         explicit_socket = os.environ.get("BITFUN_OH_DEVTOOLS_SOCKET")
@@ -188,3 +189,20 @@ def _http_json(port: int, path: str) -> Any:
     url = f"http://127.0.0.1:{port}{path}"
     with urllib.request.urlopen(url, timeout=10) as response:
         return json.loads(response.read().decode("utf-8"))
+
+
+def _format_start_template(template: str, app: OhAppConfig) -> str:
+    values = {
+        "bundle": app.bundle,
+        "module": app.module,
+        "ability": app.ability,
+        "llm_base_url": os.environ.get("BITFUN_TEST_LLM_BASE_URL", ""),
+        "llm_model": os.environ.get("BITFUN_TEST_LLM_MODEL", ""),
+        "llm_api_key": os.environ.get("BITFUN_TEST_LLM_API_KEY", ""),
+    }
+    return template.format_map(_MissingValueDict(values))
+
+
+class _MissingValueDict(dict[str, str]):
+    def __missing__(self, key: str) -> str:
+        return "{" + key + "}"

@@ -37,3 +37,8 @@ class HdcClient:
     def fport(self, local_tcp_port: int, remote: str) -> None:
         self.run("fport", f"tcp:{local_tcp_port}", remote, timeout=10)
 
+    def rport(self, device_tcp_port: int, host_tcp_port: int) -> None:
+        self.run("rport", f"tcp:{device_tcp_port}", f"tcp:{host_tcp_port}", timeout=10)
+
+    def remove_rport(self, device_tcp_port: int) -> None:
+        self.run("rport", "rm", f"tcp:{device_tcp_port}", check=False, timeout=10)
