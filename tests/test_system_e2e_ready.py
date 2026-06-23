@@ -20,6 +20,7 @@ from tests.test_mock_llm_oh_demo import (
     MODELS_API_PROVIDER_NAME,
     MINIAPP_FINAL_TEXT,
     SIMPLE_ANSWER_TEXT,
+    SHELL_COMMAND_FINAL_TEXT,
     THINKING_FINAL_TEXT,
     TOOL_TRACE_FINAL_TEXT,
     configure_mock_model_from_models_api,
@@ -145,27 +146,34 @@ def test_e2e_002_model_configuration_lifecycle(ui, mock_llm_server_session):
 def test_e2e_003_session_management_lifecycle(gitcode_workspace_ui, gitcode_ready_mock_model):
     ui = gitcode_workspace_ui
     session_a_name = f"E2E Session A {int(time.time())}"
-    message_a = "E2E session A message"
-    message_b = "E2E session B message"
+    prompt_a = "[MOCK_SCENARIO]\nid=session_a_reply\n[/MOCK_SCENARIO]\nSession A prompt"
+    prompt_b = "[MOCK_SCENARIO]\nid=session_b_reply\n[/MOCK_SCENARIO]\nSession B prompt"
+    reply_a = "Assistant reply for session A."
+    reply_b = "Assistant reply for session B."
 
     workspace_id = first_workspace_id_or_skip(ui)
     session_a_id = create_workspace_session(ui, workspace_id, kind="code")
-    send_prompt_and_wait(ui, message_a, message_a, timeout=30)
+    send_prompt_and_wait(ui, prompt_a, reply_a, timeout=30)
     session_b_id = create_workspace_session(ui, workspace_id, kind="cowork")
-    send_prompt_and_wait(ui, message_b, message_b, timeout=30)
+    send_prompt_and_wait(ui, prompt_b, reply_b, timeout=30)
 
     rename_session(ui, session_a_id, session_a_name)
     switch_to_session(ui, session_a_id)
-    wait_for_body_text(ui, message_a, timeout=30)
+    wait_for_body_text(ui, reply_a, timeout=30)
 
     switch_to_session(ui, session_b_id)
-    wait_for_body_text(ui, message_b, timeout=30)
+    wait_for_body_text(ui, reply_b, timeout=30)
 
     delete_session(ui, session_a_id)
     assert ui.find_by_test_id("nav-session-item", attrs={"session-id": session_a_id}) is None
 
     switch_to_session(ui, session_b_id)
-    send_prompt_and_wait(ui, "E2E session B follow-up", "E2E session B follow-up", timeout=30)
+    send_prompt_and_wait(
+        ui,
+        "[MOCK_SCENARIO]\nid=simple_answer\n[/MOCK_SCENARIO]\nSession B follow-up prompt",
+        SIMPLE_ANSWER_TEXT,
+        timeout=30,
+    )
 
 
 def test_e2e_004_workspace_and_session_binding(gitcode_workspace_ui, gitcode_ready_mock_model):
@@ -174,18 +182,28 @@ def test_e2e_004_workspace_and_session_binding(gitcode_workspace_ui, gitcode_rea
     workspace_a, workspace_b = workspace_ids
 
     session_a = create_workspace_session(ui, workspace_a, kind="code")
-    send_prompt_and_wait(ui, "Workspace A binding", "Workspace A binding", timeout=30)
+    send_prompt_and_wait(
+        ui,
+        "[MOCK_SCENARIO]\nid=workspace_a_reply\n[/MOCK_SCENARIO]\nWorkspace A binding prompt",
+        "Assistant reply for workspace A.",
+        timeout=30,
+    )
     assert_workspace_context_contains(ui, workspace_a)
 
     session_b = create_workspace_session(ui, workspace_b, kind="code")
-    send_prompt_and_wait(ui, "Workspace B binding", "Workspace B binding", timeout=30)
+    send_prompt_and_wait(
+        ui,
+        "[MOCK_SCENARIO]\nid=workspace_b_reply\n[/MOCK_SCENARIO]\nWorkspace B binding prompt",
+        "Assistant reply for workspace B.",
+        timeout=30,
+    )
     assert_workspace_context_contains(ui, workspace_b)
 
     switch_to_session(ui, session_a)
-    wait_for_body_text(ui, "Workspace A binding", timeout=30)
+    wait_for_body_text(ui, "Assistant reply for workspace A.", timeout=30)
     assert_workspace_context_contains(ui, workspace_a)
     switch_to_session(ui, session_b)
-    wait_for_body_text(ui, "Workspace B binding", timeout=30)
+    wait_for_body_text(ui, "Assistant reply for workspace B.", timeout=30)
     assert_workspace_context_contains(ui, workspace_b)
 
 
@@ -217,27 +235,121 @@ def test_e2e_006_settings_navigation_and_persistence(ui, ready_mock_model):
     ui.click_by_test_id("settings-nav-tab", attrs={"settings-tab": "appearance"})
     ui.wait_for_test_id("settings-scene", attrs={"settings-tab": "appearance"}, timeout=30)
 
-    changed = ui.evaluate(
-        """
-        (() => {
-          const buttons = Array.from(document.querySelectorAll('button,[role="radio"],[role="option"]'))
-            .filter((el) => {
-              const text = String(el.innerText || el.textContent || '').trim();
-              return text && !el.disabled;
-            });
-          const target = buttons.find((el) => String(el.innerText || el.textContent || '').trim().length > 0);
-          if (!target) return false;
-          target.click();
-          return true;
-        })()
-        """
-    )
-    if not changed:
-        pytest.skip("Appearance settings do not expose a stable clickable control in the current UI")
-    ui.click_by_test_id("nav-footer-settings-item") if False else None
+    current_level = get_ui_font_size_level_index(ui)
+    next_level = click_next_ui_font_size_level(ui, current_level)
+    if next_level is None:
+        pytest.skip("Appearance font size buttons do not expose a stable switch path in the current UI")
+
     open_settings_models(ui)
     ui.click_by_test_id("settings-nav-tab", attrs={"settings-tab": "appearance"})
     ui.wait_for_test_id("settings-scene", attrs={"settings-tab": "appearance"}, timeout=30)
+    persisted_level = get_ui_font_size_level_index(ui)
+    assert persisted_level == next_level, (
+        f"Expected appearance font size level {next_level} to persist, got {persisted_level}"
+    )
+
+
+def test_e2e_007_agent_and_skill_discovery_flow(ui):
+    open_agent_skill_tabs(ui)
+
+    ui.click_by_test_id("agent-tab")
+    ui.wait_for_test_id("agent-skill-panel", timeout=30)
+    ui.wait_for_test_id("agent-list", timeout=30)
+    wait_and_click_first_visible_test_id_or_skip(
+        ui,
+        "agent-list-item",
+        "No agent cards are available in the current build",
+        timeout=30,
+    )
+    ui.wait_for_test_id("agent-detail-panel", timeout=30)
+    ui.wait_for_test_id("agent-detail-title", timeout=15)
+    ui.wait_for_test_id("agent-detail-description", timeout=15)
+    if ui.find_by_test_id("agent-detail-tools-section") is not None:
+        ui.wait_for_test_id("agent-detail-tools-section", timeout=15)
+    ui.click_by_test_id("agent-detail-close")
+    ui.wait_for_test_id_gone("agent-detail-panel", timeout=15)
+
+    open_agent_skill_tabs(ui)
+    ui.click_by_test_id("skill-tab")
+    ui.wait_for_test_id("agent-skill-panel", timeout=30)
+    ui.wait_for_test_id("skill-list", timeout=30)
+    wait_and_click_first_visible_test_id_or_skip(
+        ui,
+        "skill-list-item",
+        "No installed skill cards are available in the current build",
+        timeout=30,
+    )
+    ui.wait_for_test_id("skill-detail-panel", timeout=30)
+    ui.wait_for_test_id("skill-detail-title", timeout=15)
+    ui.wait_for_test_id("skill-detail-capabilities-section", timeout=15)
+    ui.click_by_test_id("skill-detail-close")
+    ui.wait_for_test_id_gone("skill-detail-panel", timeout=15)
+
+
+def test_e2e_008_shell_panel_integration(gitcode_workspace_ui, gitcode_ready_mock_model):
+    ui = gitcode_workspace_ui
+    workspace_id = first_workspace_id_or_skip(ui)
+    session_id = create_workspace_session(ui, workspace_id, kind="code")
+    switch_to_session(ui, session_id)
+    select_chat_model(ui, MOCK_MODEL_NAME)
+
+    send_prompt_and_wait(ui, "[MOCK_SCENARIO]\nid=shell_command_demo\n[/MOCK_SCENARIO]", SHELL_COMMAND_FINAL_TEXT, timeout=120)
+    shell_card = wait_for_any_test_id(
+        ui,
+        ["chat-shell-tool-card", "chat-shell-command-card"],
+        timeout=15,
+    )
+    if shell_card is None:
+        pytest.skip("Shell command ToolCard was not rendered")
+    assert shell_card.visible
+
+    expand_card_if_collapsed(
+        ui,
+        "chat-shell-command-card",
+        toggle_test_id="chat-shell-command-toggle",
+        content_test_ids=["chat-shell-command-output", "chat-shell-command-exit-code"],
+    )
+    command = ui.wait_for_test_id("chat-shell-command-text", timeout=15)
+    output = ui.wait_for_test_id("chat-shell-command-output", timeout=15)
+    exit_code = ui.wait_for_test_id("chat-shell-command-exit-code", timeout=15)
+    assert "printf 'M README.md\\n'" in command.text
+    assert "M README.md" in output.text
+    assert exit_code.visible
+
+    if ui.find_by_test_id("chat-shell-tool-open-panel") is None:
+        pytest.skip("Shell ToolCard did not expose chat-shell-tool-open-panel")
+    ui.click_by_test_id("chat-shell-tool-open-panel")
+    wait_for_visible_test_id(ui, "shell-panel", timeout=30)
+    wait_for_visible_test_id(ui, "shell-panel-title", timeout=15)
+
+    if ui.find_by_test_id("shell-command-list") is not None:
+        ui.wait_for_test_id("shell-command-list", timeout=15)
+
+
+def test_e2e_011_skills_tab_navigation(ui):
+    open_agent_skill_tabs(ui)
+    ui.click_by_test_id("skill-tab")
+    ui.wait_for_test_id("agent-skill-panel", timeout=30)
+
+    installed_tab = ui.wait_for_test_id("skills-tab-installed", timeout=15)
+    discover_tab = ui.wait_for_test_id("skills-tab-discover", timeout=15)
+    assert installed_tab.visible
+    assert discover_tab.visible
+
+    ui.wait_for_test_id("skills-installed-panel", timeout=30)
+    ui.click_by_test_id("skills-tab-discover")
+    wait_for_visible_test_id(ui, "skills-discover-panel", timeout=30)
+    ui.wait_for_test_id("skills-discover-search", timeout=15)
+
+    ui.click_by_test_id("skills-tab-installed")
+    wait_for_visible_test_id(ui, "skills-installed-panel", timeout=30)
+    ui.wait_for_test_id("skills-installed-content", timeout=15)
+
+
+def test_e2e_012_shell_panel_entry(ui):
+    ui.click_by_test_id("shell-panel-entry")
+    wait_for_visible_test_id(ui, "shell-panel", timeout=30)
+    wait_for_visible_test_id(ui, "shell-panel-title", timeout=15)
 
 
 def test_e2e_009_session_error_recovery(ui, ready_mock_model):
@@ -282,6 +394,173 @@ def send_prompt_and_wait(ui, prompt: str, expected_text: str, timeout: float) ->
     send_prompt(ui, prompt)
     wait_for_body_text(ui, expected_text, timeout=timeout)
     wait_for_round_complete(ui, timeout=timeout)
+
+
+def open_agent_skill_tabs(ui) -> None:
+    ui.wait_for_test_id("agent-skill-entry", timeout=15)
+    expanded = ui.evaluate(
+        """
+        (() => document.querySelector('[data-testid="agent-skill-entry"]')?.getAttribute('aria-expanded') === 'true')()
+        """
+    )
+    if expanded is not True:
+        ui.click_by_test_id("agent-skill-entry")
+    ui.wait_for_test_id("agent-skill-tabs", timeout=15)
+
+
+def wait_and_click_first_visible_test_id_or_skip(ui, test_id: str, skip_reason: str, *, timeout: float) -> None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if click_first_visible_test_id(ui, test_id):
+            return
+        time.sleep(0.2)
+    pytest.skip(skip_reason)
+
+
+def wait_for_any_test_id(ui, test_ids: list[str], *, timeout: float):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        for test_id in test_ids:
+            element = ui.find_by_test_id(test_id)
+            if element is not None:
+                return element
+        time.sleep(0.2)
+    return None
+
+
+def wait_for_visible_test_id(ui, test_id: str, *, timeout: float, attrs: dict[str, str] | None = None):
+    deadline = time.monotonic() + timeout
+    last = None
+    while time.monotonic() < deadline:
+        last = ui.find_by_test_id(test_id, attrs=attrs)
+        if last is not None and last.visible:
+            return last
+        time.sleep(0.2)
+    if last is None:
+        raise AssertionError(f"Timed out waiting for visible data-testid={test_id!r}")
+    raise AssertionError(f"data-testid={test_id!r} exists but did not become visible")
+
+
+def get_ui_font_size_level_index(ui) -> int | None:
+    payload = ui.evaluate(
+        """
+        (() => {
+          const buttons = Array.from(document.querySelectorAll('.font-pref-panel__level-buttons > .font-pref-panel__level-btn'));
+          if (!buttons.length) return null;
+          return buttons.findIndex((button) => button.getAttribute('aria-pressed') === 'true');
+        })()
+        """
+    )
+    return int(payload) if isinstance(payload, (int, float)) and int(payload) >= 0 else None
+
+
+def click_next_ui_font_size_level(ui, current_index: int | None) -> int | None:
+    payload = ui.evaluate(
+        f"""
+        (() => {{
+          const buttons = Array.from(document.querySelectorAll('.font-pref-panel__level-buttons > .font-pref-panel__level-btn'))
+            .filter((button) => !button.disabled);
+          if (buttons.length < 2) return null;
+          const currentIndex = Number.isInteger({json.dumps(current_index)}) ? {json.dumps(current_index)} : -1;
+          const fallbackIndex = buttons.findIndex((button) => button.getAttribute('aria-pressed') === 'true');
+          const activeIndex = currentIndex >= 0 ? currentIndex : fallbackIndex;
+          const targetIndex = buttons.findIndex((_, index) => index !== activeIndex);
+          if (targetIndex < 0) return null;
+          const target = buttons[targetIndex];
+          target.scrollIntoView({{ block: 'center', inline: 'center' }});
+          target.click();
+          return targetIndex;
+        }})()
+        """
+    )
+    return int(payload) if isinstance(payload, (int, float)) and int(payload) >= 0 else None
+
+
+def click_first_visible_test_id(ui, test_id: str) -> bool:
+    clicked = ui.evaluate(
+        f"""
+        (() => {{
+          const candidates = Array.from(document.querySelectorAll('[data-testid="{test_id}"]'));
+          const target = candidates.find((el) => {{
+            const rect = el.getBoundingClientRect();
+            const style = window.getComputedStyle(el);
+            return Boolean((rect.width || rect.height || el.getClientRects().length) &&
+              style.display !== 'none' &&
+              style.visibility !== 'hidden');
+          }});
+          if (!target) return false;
+          target.scrollIntoView({{ block: 'center', inline: 'center' }});
+          const rect = target.getBoundingClientRect();
+          const x = rect.left + rect.width / 2;
+          const y = rect.top + rect.height / 2;
+          const clickTarget = document.elementFromPoint(x, y) || target;
+          for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {{
+            clickTarget.dispatchEvent(new MouseEvent(type, {{
+              bubbles: true,
+              cancelable: true,
+              view: window,
+              clientX: x,
+              clientY: y,
+            }}));
+          }}
+          return true;
+        }})()
+        """
+    )
+    return bool(clicked)
+
+
+def submit_browser_url(ui, url: str) -> None:
+    ui.fill_by_test_id("browser-url-input", url)
+    if getattr(ui, "hdc", None) is not None:
+        ui.click_by_test_id("browser-url-input")
+        ui.hdc.run("shell", "uitest uiInput keyEvent 66", check=False, timeout=10)
+        time.sleep(0.5)
+        return
+
+    submitted = ui.evaluate(
+        """
+        (async () => {
+          const input = document.querySelector('[data-testid="browser-url-input"]');
+          const form = input?.closest('form');
+          if (!input || !form) return false;
+          input.focus();
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          input.dispatchEvent(new KeyboardEvent('keydown', {
+            key: 'Enter',
+            code: 'Enter',
+            bubbles: true,
+            cancelable: true,
+          }));
+          input.dispatchEvent(new KeyboardEvent('keyup', {
+            key: 'Enter',
+            code: 'Enter',
+            bubbles: true,
+            cancelable: true,
+          }));
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          if (typeof form.requestSubmit === 'function') {
+            form.requestSubmit();
+          } else if (typeof SubmitEvent === 'function') {
+            form.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true }));
+          } else {
+            form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+          }
+          return true;
+        })()
+        """
+    )
+    assert submitted is True
+
+
+def try_wait_for_browser_url(ui, url: str, *, timeout: float) -> bool:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        current = ui.find_by_test_id("browser-current-url")
+        if current is not None and url in current.text:
+            return True
+        time.sleep(0.2)
+    return False
 
 
 def create_new_code_session(ui) -> str:

@@ -1,0 +1,14 @@
+{
+  "scenario_id": "workspace_b_reply",
+  "description": "Deterministic assistant reply for workspace B binding tests.",
+  "mode": "chat_completions",
+  "stream": false,
+  "turns": [
+    {
+      "assistant": {
+        "thinking": ["Identify the workspace B binding test scenario.", "Return a fixed assistant reply."],
+        "final_text": "Assistant reply for workspace B."
+      }
+    }
+  ]
+}

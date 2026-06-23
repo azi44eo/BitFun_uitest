@@ -396,3 +396,67 @@
 2. 工作区、模型、会话配置都能成功完成。
 3. 第一条 AI 回答成功返回。
 4. 重开或刷新后，已创建的状态仍然存在。
+## E2E-011 Skills 页签切换
+
+状态：
+
+`Ready`
+
+当前仍需补充：
+
+- 当前没有阻塞 Installed / Discover 页签切换自动化的缺项。
+
+### 前置条件
+
+1. Agents / Skills 共享导航入口可见。
+2. 可以通过 `skill-tab` 进入 Skills 场景。
+3. 已有以下 locator：
+   `agent-skill-entry`、`skill-tab`、`agent-skill-panel`、
+   `skills-tab-installed`、`skills-tab-discover`、
+   `skills-installed-panel`、`skills-installed-content`、
+   `skills-discover-panel`、`skills-discover-search`。
+
+### 执行步骤
+
+1. 打开 Agents / Skills 共享导航分组。
+2. 通过 `skill-tab` 进入 Skills 场景。
+3. 验证 Installed 页签可见，且 Installed 主面板已渲染。
+4. 切换到 Discover 页签。
+5. 验证 Discover 主面板和搜索框已渲染。
+6. 再切回 Installed 页签。
+7. 验证 Installed 主面板再次正确显示。
+
+### 预期结果
+
+1. Skills 场景可以从共享导航入口正常打开。
+2. Installed 和 Discover 两个页签都可见且可点击。
+3. 切换页签后，主面板内容会正确切换。
+4. 切回 Installed 后，场景状态仍然正常，不会出现卡死或错乱。
+
+## E2E-012 Shell 面板入口
+
+状态：
+
+`Ready`
+
+当前仍需补充：
+
+- 当前没有阻塞 Shell 面板基础入口自动化的缺项。
+
+### 前置条件
+
+1. 底部 Shell 入口按钮可见。
+2. 已有以下 locator：
+   `shell-panel-entry`、`shell-panel`、`shell-panel-title`。
+
+### 执行步骤
+
+1. 点击底部 Shell 入口。
+2. 等待 Shell 面板变为可见。
+3. 验证 Shell 面板标题可见。
+
+### 预期结果
+
+1. Shell 入口能够成功打开 Shell 面板。
+2. Shell 面板是真正变为可见状态，而不是仅存在隐藏 DOM。
+3. 打开后，Shell 面板标题可以正常渲染。

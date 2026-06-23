@@ -1,0 +1,14 @@
+{
+  "scenario_id": "session_b_reply",
+  "description": "Deterministic assistant reply for session B lifecycle tests.",
+  "mode": "chat_completions",
+  "stream": false,
+  "turns": [
+    {
+      "assistant": {
+        "thinking": ["Identify the session B lifecycle test scenario.", "Return a fixed assistant reply."],
+        "final_text": "Assistant reply for session B."
+      }
+    }
+  ]
+}

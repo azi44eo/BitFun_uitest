@@ -26,6 +26,10 @@ def test_mock_llm_session_starts_and_loads_scenarios(mock_llm_server_session):
         "miniapp_demo",
         "long_task_demo",
         "error_then_success",
+        "session_a_reply",
+        "session_b_reply",
+        "workspace_a_reply",
+        "workspace_b_reply",
     } <= set(scenarios["data"])
 
     models = _get_json(f"{mock_llm_server_session['host_base_url']}/models")
@@ -59,6 +63,35 @@ def test_mock_llm_chat_completion_uses_scenario(mock_llm_server_session):
     assert message["content"] == "这是 BitFun Mock LLM Server 的固定回答。"
     assert "simple_answer" in message["reasoning_content"]
     assert message["bitfun_mock"]["scenario_id"] == "simple_answer"
+
+
+@pytest.mark.parametrize(
+    ("scenario_id", "expected_text"),
+    [
+        ("session_a_reply", "Assistant reply for session A."),
+        ("session_b_reply", "Assistant reply for session B."),
+        ("workspace_a_reply", "Assistant reply for workspace A."),
+        ("workspace_b_reply", "Assistant reply for workspace B."),
+    ],
+)
+def test_mock_llm_supports_distinct_session_and_workspace_replies(
+    mock_llm_server_session,
+    scenario_id: str,
+    expected_text: str,
+):
+    payload = {
+        "model": "bitfun-mock",
+        "stream": False,
+        "messages": [
+            {
+                "role": "user",
+                "content": f"[MOCK_SCENARIO]\nid={scenario_id}\n[/MOCK_SCENARIO]",
+            }
+        ],
+    }
+
+    response = _post_json(f"{mock_llm_server_session['host_base_url']}/chat/completions", payload)
+    assert response["choices"][0]["message"]["content"] == expected_text
 
 
 def test_mock_llm_chat_completion_can_drive_two_step_tool_flow(mock_llm_server_session):

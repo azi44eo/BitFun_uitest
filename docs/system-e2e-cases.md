@@ -2,7 +2,7 @@
 
 # BitFun System E2E Cases
 
-This document defines 10 end-to-end system test cases in an automation-ready
+This document defines 12 end-to-end system test cases in an automation-ready
 format. Each case is scoped so it can be implemented with deterministic test
 data, stable locators, and clear cleanup expectations.
 
@@ -399,3 +399,68 @@ Missing items:
 2. Workspace, model, and session setup all complete successfully.
 3. The first AI response arrives successfully.
 4. The created state persists across reopen or refresh.
+
+## E2E-011 Skills Tab Navigation
+
+Status:
+
+`Ready`
+
+Missing items:
+
+- None blocking for installed/discover tab switching coverage.
+
+### Preconditions
+
+1. The Agents/Skills navigation entry is visible.
+2. The Skills scene can be opened from the shared Agents/Skills entry.
+3. Required locators already exist:
+   `agent-skill-entry`, `skill-tab`, `agent-skill-panel`,
+   `skills-tab-installed`, `skills-tab-discover`,
+   `skills-installed-panel`, `skills-installed-content`,
+   `skills-discover-panel`, `skills-discover-search`.
+
+### Execution Steps
+
+1. Open the shared Agents/Skills navigation group.
+2. Enter the Skills scene from the `skill-tab`.
+3. Verify the Installed tab is present and the installed panel is rendered.
+4. Switch to the Discover tab.
+5. Verify the discover panel and discover search input are rendered.
+6. Switch back to the Installed tab.
+7. Verify the installed panel is rendered again.
+
+### Expected Results
+
+1. The Skills scene opens successfully from the shared navigation entry.
+2. Installed and Discover tabs are both visible and clickable.
+3. Switching tabs updates the rendered main panel correctly.
+4. Returning to Installed restores the installed panel without breaking the scene.
+
+## E2E-012 Shell Panel Entry
+
+Status:
+
+`Ready`
+
+Missing items:
+
+- None blocking for basic shell panel entry coverage.
+
+### Preconditions
+
+1. The footer shell entry is visible in the current app shell.
+2. Required locators already exist:
+   `shell-panel-entry`, `shell-panel`, `shell-panel-title`.
+
+### Execution Steps
+
+1. Click the footer shell entry.
+2. Wait for the shell panel to become visible.
+3. Verify the shell panel title is visible.
+
+### Expected Results
+
+1. The shell entry opens the shell panel successfully.
+2. The shell panel becomes visible instead of staying hidden in the DOM only.
+3. The shell panel header/title renders correctly after opening.
