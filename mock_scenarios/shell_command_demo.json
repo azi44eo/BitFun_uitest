@@ -1,0 +1,34 @@
+{
+  "scenario_id": "shell_command_demo",
+  "description": "Demonstrates a deterministic shell command result through the standard Bash tool flow.",
+  "mode": "chat_completions",
+  "stream": false,
+  "turns": [
+    {
+      "assistant": {
+        "thinking": [
+          "Run a deterministic shell command through the real Bash tool."
+        ],
+        "tool_calls": [
+          {
+            "id": "call_bash_mock_status",
+            "name": "Bash",
+            "arguments": {
+              "command": "printf 'M README.md\\n'"
+            }
+          }
+        ],
+        "final_text": ""
+      }
+    },
+    {
+      "assistant": {
+        "thinking": [
+          "The Bash tool completed.",
+          "Return the deterministic final answer for the shell demo."
+        ],
+        "final_text": "Rendered one shell command result."
+      }
+    }
+  ]
+}

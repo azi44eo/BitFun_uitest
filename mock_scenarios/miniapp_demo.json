@@ -1,0 +1,36 @@
+{
+  "scenario_id": "miniapp_demo",
+  "description": "Demonstrates a deterministic mini app creation through the standard InitMiniApp tool flow.",
+  "mode": "chat_completions",
+  "stream": false,
+  "turns": [
+    {
+      "assistant": {
+        "thinking": [
+          "Create a deterministic mini app skeleton through the real InitMiniApp tool."
+        ],
+        "tool_calls": [
+          {
+            "id": "call_init_miniapp_mock",
+            "name": "InitMiniApp",
+            "arguments": {
+              "name": "BitFun Mock Mini App",
+              "description": "Mock mini app for UI testing",
+              "category": "utility"
+            }
+          }
+        ],
+        "final_text": ""
+      }
+    },
+    {
+      "assistant": {
+        "thinking": [
+          "The InitMiniApp tool completed.",
+          "Return the deterministic final answer for the mini app demo."
+        ],
+        "final_text": "Rendered one mini app result."
+      }
+    }
+  ]
+}

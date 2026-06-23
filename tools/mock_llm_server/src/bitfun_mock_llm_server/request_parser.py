@@ -13,6 +13,7 @@ class ParsedChatRequest:
     scenario_id: str | None
     turn_index: int
     stream: bool | None
+    control: dict[str, str]
 
 
 def parse_chat_request(payload: dict[str, Any], default_scenario_id: str | None) -> ParsedChatRequest:
@@ -20,13 +21,19 @@ def parse_chat_request(payload: dict[str, Any], default_scenario_id: str | None)
     control.update(_extract_marker_control(payload))
 
     scenario_id = control.get("id") or control.get("scenario_id") or default_scenario_id
-    turn_index = _safe_int(control.get("turn") or control.get("turn_index"), default=0)
+    explicit_turn = control.get("turn") or control.get("turn_index")
+    turn_index = (
+        _safe_int(explicit_turn, default=0)
+        if explicit_turn is not None
+        else _infer_turn_index(payload.get("messages", []))
+    )
     stream = payload.get("stream")
 
     return ParsedChatRequest(
         scenario_id=str(scenario_id) if scenario_id else None,
         turn_index=turn_index,
         stream=stream if isinstance(stream, bool) else None,
+        control=dict(control),
     )
 
 
@@ -53,19 +60,22 @@ def _extract_top_level_control(payload: dict[str, Any]) -> dict[str, str]:
 
 
 def _extract_marker_control(payload: dict[str, Any]) -> dict[str, str]:
-    for text in _iter_message_text(payload.get("messages", [])):
+    for text in _iter_message_text(payload.get("messages", []), newest_first=True, user_only=True):
         match = MOCK_BLOCK_RE.search(text)
         if match:
             return _parse_control_block(match.group(1))
     return {}
 
 
-def _iter_message_text(messages: object):
+def _iter_message_text(messages: object, *, newest_first: bool = False, user_only: bool = False):
     if not isinstance(messages, list):
         return
 
-    for message in messages:
+    ordered = reversed(messages) if newest_first else messages
+    for message in ordered:
         if not isinstance(message, dict):
+            continue
+        if user_only and str(message.get("role") or "").lower() != "user":
             continue
         content = message.get("content")
         if isinstance(content, str):
@@ -74,6 +84,18 @@ def _iter_message_text(messages: object):
             for part in content:
                 if isinstance(part, dict) and isinstance(part.get("text"), str):
                     yield part["text"]
+
+
+def _infer_turn_index(messages: object) -> int:
+    if not isinstance(messages, list):
+        return 0
+
+    for message in messages:
+        if not isinstance(message, dict):
+            continue
+        if str(message.get("role") or "").lower() in {"tool", "function"}:
+            return 1
+    return 0
 
 
 def _parse_control_block(block: str) -> dict[str, str]:

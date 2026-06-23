@@ -101,7 +101,7 @@ class OpenHarmonyDriver(DomTestIdMixin):
         self._start_app()
         time.sleep(self.app.startup_wait_seconds)
         self._allow_startup_permission_dialog()
-        self._connect_devtools()
+        self._connect_devtools_with_retry()
         self.wait_for_test_id("app-layout", timeout=30)
 
     def close(self) -> None:
@@ -116,7 +116,13 @@ class OpenHarmonyDriver(DomTestIdMixin):
     def evaluate(self, expression: str) -> Any:
         if self._cdp is None:
             raise CdpError("OpenHarmonyDriver.start() must be called before evaluate()")
-        return self._cdp.evaluate(expression)
+        try:
+            return self._cdp.evaluate(expression)
+        except Exception as error:
+            self._reconnect_devtools()
+            if self._cdp is None:
+                raise error
+            return self._cdp.evaluate(expression)
 
     def _start_app(self) -> None:
         start_command = os.environ.get("BITFUN_OH_APP_START_COMMAND")
@@ -134,9 +140,11 @@ class OpenHarmonyDriver(DomTestIdMixin):
         stop_command = os.environ.get("BITFUN_OH_APP_STOP_COMMAND")
         if stop_command:
             self.hdc.run("shell", stop_command, check=False, timeout=30)
+            time.sleep(1)
             return
 
         self.hdc.run("shell", f"aa force-stop {self.app.bundle}", check=False, timeout=30)
+        time.sleep(1)
 
     def _reset_app_data(self) -> None:
         self._stop_app()
@@ -162,7 +170,10 @@ class OpenHarmonyDriver(DomTestIdMixin):
             time.sleep(0.3)
 
     def _find_permission_allow_button(self) -> tuple[int, int] | None:
-        output = self.hdc.run("shell", "uitest dumpLayout", check=False, timeout=10)
+        try:
+            output = self.hdc.run("shell", "uitest dumpLayout", check=False, timeout=10)
+        except Exception:
+            return None
         match = re.search(r"DumpLayout saved to:(\S+)", output)
         if not match:
             return None
@@ -186,6 +197,7 @@ class OpenHarmonyDriver(DomTestIdMixin):
     def _connect_devtools(self) -> None:
         explicit_socket = os.environ.get("BITFUN_OH_DEVTOOLS_SOCKET")
         resolver = ArkWebDevtoolsResolver(self.hdc)
+        app_pid = self._app_pid()
 
         if explicit_socket:
             socket_name = ArkWebDevtoolsResolver._normalize_socket(explicit_socket)
@@ -198,7 +210,12 @@ class OpenHarmonyDriver(DomTestIdMixin):
         deadline = time.monotonic() + self.app.devtools_wait_seconds
         last_error: Exception | None = None
         while time.monotonic() < deadline:
-            for socket_name in resolver.list_sockets():
+            socket_names = resolver.list_sockets()
+            if app_pid:
+                pid_matches = [name for name in socket_names if name.endswith(f"_{app_pid}")]
+                if pid_matches:
+                    socket_names = pid_matches
+            for socket_name in socket_names:
                 try:
                     port = self._forward_socket(socket_name)
                     websocket_url = self._discover_websocket_url(port)
@@ -210,6 +227,44 @@ class OpenHarmonyDriver(DomTestIdMixin):
             time.sleep(0.3)
 
         raise HdcError(f"Unable to connect BitFun ArkWeb DevTools target: {last_error}")
+
+    def _app_pid(self) -> str | None:
+        output = self.hdc.run("shell", f"pidof {self.app.bundle}", check=False, timeout=10).strip()
+        return output.split()[0] if output else None
+
+    def _connect_devtools_with_retry(self) -> None:
+        last_error: Exception | None = None
+        for attempt in range(2):
+            try:
+                self._connect_devtools()
+                return
+            except Exception as error:
+                last_error = error
+                if attempt == 0:
+                    self._stop_app()
+                    self._start_app()
+                    time.sleep(self.app.startup_wait_seconds)
+                    self._allow_startup_permission_dialog()
+                time.sleep(1)
+        raise HdcError(f"Unable to connect BitFun ArkWeb DevTools target after retry: {last_error}")
+
+    def _reconnect_devtools(self) -> None:
+        try:
+            if self._cdp is not None:
+                self._cdp.close()
+        except Exception:
+            pass
+        finally:
+            self._cdp = None
+        last_error: Exception | None = None
+        for _ in range(3):
+            try:
+                self._connect_devtools()
+                return
+            except Exception as error:
+                last_error = error
+                time.sleep(1)
+        raise HdcError(f"Unable to reconnect BitFun ArkWeb DevTools target: {last_error}")
 
     def _forward_socket(self, socket_name: str) -> int:
         port = self.fixed_cdp_port if self.fixed_cdp_port is not None else _free_tcp_port()

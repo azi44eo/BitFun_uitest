@@ -1,37 +1,49 @@
 {
   "scenario_id": "file_and_miniapp_demo",
-  "description": "展示文件修改和 miniapp 生成的固定响应。",
+  "description": "Demonstrates a combined mini app initialization and file write flow through standard tool calls.",
   "mode": "chat_completions",
   "stream": true,
   "turns": [
     {
       "assistant": {
-        "thinking": ["先生成文件计划", "再返回 miniapp 文件清单"],
-        "file_changes": [
+        "thinking": [
+          "Create a deterministic mini app skeleton.",
+          "Then write one deterministic UI file through a standard tool call."
+        ],
+        "tool_calls": [
           {
-            "path": "miniapp/package.json",
-            "action": "create",
-            "content": "{\n  \"scripts\": {\n    \"dev\": \"vite\"\n  },\n  \"dependencies\": {\n    \"@vitejs/plugin-react\": \"latest\",\n    \"vite\": \"latest\",\n    \"react\": \"latest\",\n    \"react-dom\": \"latest\"\n  },\n  \"devDependencies\": {}\n}\n"
+            "id": "call_init_miniapp_combo",
+            "name": "InitMiniApp",
+            "arguments": {
+              "name": "BitFun Mock Mini App",
+              "description": "Mock mini app for combined scenario",
+              "category": "utility"
+            }
           },
           {
-            "path": "miniapp/src/App.tsx",
-            "action": "create",
-            "content": "export default function App() {\n  return <main data-testid=\"mock-miniapp\">BitFun Mock MiniApp</main>;\n}\n"
+            "id": "call_write_miniapp_app",
+            "name": "Write",
+            "arguments": {
+              "file_path": ".bitfun-ui-test/mock-miniapp/src/App.tsx",
+              "content": "export default function App() { return <main>BitFun Mock Mini App</main>; }\n"
+            }
           }
         ],
-        "miniapp": {
-          "title": "BitFun Mock MiniApp",
-          "files": [
-            {
-              "path": "src/App.tsx",
-              "content": "export default function App() {\n  return <main data-testid=\"mock-miniapp\">BitFun Mock MiniApp</main>;\n}\n"
-            }
-          ]
-        },
-        "final_text": "已生成一个固定的 miniapp 示例和对应文件变更。",
-        "stream_chunks": ["已生成一个固定的 miniapp 示例，", "并返回对应文件变更。"]
+        "final_text": ""
+      }
+    },
+    {
+      "assistant": {
+        "thinking": [
+          "The requested mini app initialization and file write tool calls completed.",
+          "Return a deterministic final answer."
+        ],
+        "final_text": "Rendered one combined mini app and file change result.",
+        "stream_chunks": [
+          "Rendered one combined mini app ",
+          "and file change result."
+        ]
       }
     }
   ]
 }
-

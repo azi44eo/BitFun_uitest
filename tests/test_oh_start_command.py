@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import pytest
+
+from bitfun_uitest.platforms.cdp import CdpError
 from bitfun_uitest.platforms.oh import OhAppConfig, OpenHarmonyDriver
 
 
@@ -72,3 +75,37 @@ def test_oh_close_stops_app_without_cleaning_data(monkeypatch):
     driver.close()
 
     assert hdc.commands == ["shell aa force-stop bundle"]
+
+
+def test_oh_evaluate_reconnects_after_cdp_disconnect(monkeypatch):
+    hdc = FakeHdc()
+    driver = OpenHarmonyDriver(
+        hdc,
+        OhAppConfig(bundle="bundle", module="module", ability="ability", clean_app_data=False),
+    )
+
+    class FailingCdp:
+        def evaluate(self, expression: str):
+            raise CdpError("socket dropped")
+
+        def close(self) -> None:
+            return None
+
+    class WorkingCdp:
+        def evaluate(self, expression: str):
+            return f"ok:{expression}"
+
+        def close(self) -> None:
+            return None
+
+    reconnects: list[str] = []
+
+    def fake_reconnect():
+        reconnects.append("reconnected")
+        driver._cdp = WorkingCdp()
+
+    driver._cdp = FailingCdp()
+    monkeypatch.setattr(driver, "_reconnect_devtools", fake_reconnect)
+
+    assert driver.evaluate("document.body.innerText") == "ok:document.body.innerText"
+    assert reconnects == ["reconnected"]

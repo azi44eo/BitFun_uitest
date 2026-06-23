@@ -15,6 +15,7 @@ def build_chat_completion(
 ) -> dict[str, Any]:
     completion_id = _completion_id()
     model = _model_name(request_payload)
+    finish_reason = _finish_reason(turn)
 
     return {
         "id": completion_id,
@@ -31,7 +32,7 @@ def build_chat_completion(
                     "tool_calls": [_tool_call_message(call, index) for index, call in enumerate(turn.tool_calls)],
                     "bitfun_mock": _bitfun_mock_payload(scenario, turn),
                 },
-                "finish_reason": "stop",
+                "finish_reason": finish_reason,
             }
         ],
         "usage": {
@@ -74,23 +75,13 @@ async def stream_chat_completion(
     for text in _content_chunks(turn):
         yield _sse(_chunk(completion_id, created, model, {"content": text}))
 
-    if turn.shell_commands or turn.file_changes or turn.miniapp:
-        yield _sse(
-            _chunk(
-                completion_id,
-                created,
-                model,
-                {"bitfun_mock": _bitfun_mock_payload(scenario, turn)},
-            )
-        )
-
     yield _sse(
         {
             "id": completion_id,
             "object": "chat.completion.chunk",
             "created": created,
             "model": model,
-            "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
+            "choices": [{"index": 0, "delta": {}, "finish_reason": _finish_reason(turn)}],
         }
     )
     yield "data: [DONE]\n\n"
@@ -147,6 +138,8 @@ def _tool_call_delta(call: ToolCall, index: int) -> dict[str, Any]:
 
 
 def _content_chunks(turn: AssistantTurn) -> list[str]:
+    if turn.tool_calls and not turn.final_text and turn.stream_chunks is None:
+        return []
     if turn.stream_chunks is not None:
         return turn.stream_chunks
     if not turn.final_text:
@@ -154,12 +147,15 @@ def _content_chunks(turn: AssistantTurn) -> list[str]:
     return [turn.final_text]
 
 
+def _finish_reason(turn: AssistantTurn) -> str:
+    if turn.tool_calls and not turn.final_text:
+        return "tool_calls"
+    return "stop"
+
+
 def _bitfun_mock_payload(scenario: Scenario, turn: AssistantTurn) -> dict[str, Any]:
     return {
         "scenario_id": scenario.scenario_id,
         "thinking": turn.thinking,
-        "shell_commands": [item.model_dump() for item in turn.shell_commands],
-        "file_changes": [item.model_dump() for item in turn.file_changes],
-        "miniapp": turn.miniapp.model_dump() if turn.miniapp else None,
     }
 

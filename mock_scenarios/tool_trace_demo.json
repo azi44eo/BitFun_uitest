@@ -1,12 +1,15 @@
 {
   "scenario_id": "tool_trace_demo",
-  "description": "展示 thinking、tool call、shell command 的固定响应。",
+  "description": "Demonstrates a two-step tool-calling flow for BitFun mock integration tests.",
   "mode": "chat_completions",
   "stream": true,
   "turns": [
     {
       "assistant": {
-        "thinking": ["先检查项目结构", "然后读取关键文件"],
+        "thinking": [
+          "Inspect the workspace before answering.",
+          "Call BitFun tools to read the README and check git status."
+        ],
         "tool_calls": [
           {
             "id": "call_readme",
@@ -23,17 +26,21 @@
             }
           }
         ],
-        "shell_commands": [
-          {
-            "command": "git status --short",
-            "output": " M README.md\n?? src/\n?? scenarios/\n",
-            "exit_code": 0
-          }
+        "final_text": ""
+      }
+    },
+    {
+      "assistant": {
+        "thinking": [
+          "The requested BitFun tools have completed.",
+          "Return a deterministic final answer for the demo test."
         ],
-        "final_text": "我已经检查了项目结构，并读取了关键文件。",
-        "stream_chunks": ["我已经检查了项目结构，", "并读取了关键文件。"]
+        "final_text": "Mock tool calls completed through BitFun tools.",
+        "stream_chunks": [
+          "Mock tool calls completed ",
+          "through BitFun tools."
+        ]
       }
     }
   ]
 }
-

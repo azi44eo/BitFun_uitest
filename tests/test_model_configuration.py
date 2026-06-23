@@ -5,7 +5,7 @@ import time
 import pytest
 
 
-OPENBITFUN_MODELS = ("deepseek-v4-pro", "glm-5.1", "qwen3.6-plus")
+OPENBITFUN_MODELS = ("deepseek-v4-pro", "glm-5.1")
 
 
 @pytest.fixture

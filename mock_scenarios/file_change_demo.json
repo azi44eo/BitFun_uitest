@@ -1,0 +1,35 @@
+{
+  "scenario_id": "file_change_demo",
+  "description": "Demonstrates a deterministic file change through the standard Write tool flow.",
+  "mode": "chat_completions",
+  "stream": false,
+  "turns": [
+    {
+      "assistant": {
+        "thinking": [
+          "Create a deterministic file change through the real Write tool."
+        ],
+        "tool_calls": [
+          {
+            "id": "call_write_mock_file",
+            "name": "Write",
+            "arguments": {
+              "file_path": ".bitfun-ui-test/mock-file-change/App.tsx",
+              "content": "export default function App() { return <main>Hello</main>; }\n"
+            }
+          }
+        ],
+        "final_text": ""
+      }
+    },
+    {
+      "assistant": {
+        "thinking": [
+          "The Write tool completed.",
+          "Return the deterministic final answer for the file change demo."
+        ],
+        "final_text": "Rendered one file change result."
+      }
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "scenario_id": "error_then_success",
+  "description": "Fails once, then succeeds on the next request for error recovery tests.",
+  "mode": "chat_completions",
+  "stream": false,
+  "turns": [
+    {
+      "assistant": {
+        "thinking": [
+          "Return a deterministic error for the first attempt."
+        ],
+        "error_status": 500,
+        "error_detail": "Mock transient failure for retry testing."
+      }
+    },
+    {
+      "assistant": {
+        "thinking": [
+          "The retry attempt should now succeed."
+        ],
+        "final_text": "Recovered successfully after retry."
+      }
+    }
+  ]
+}

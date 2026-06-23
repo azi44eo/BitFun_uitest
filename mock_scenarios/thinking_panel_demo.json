@@ -1,0 +1,21 @@
+{
+  "scenario_id": "thinking_panel_demo",
+  "description": "Demonstrates a deterministic thinking panel response for session UI tests.",
+  "mode": "chat_completions",
+  "stream": true,
+  "turns": [
+    {
+      "assistant": {
+        "thinking": [
+          "Inspect the task and identify the main goal.",
+          "Plan the response before answering."
+        ],
+        "final_text": "Here is the final answer after reasoning.",
+        "stream_chunks": [
+          "Here is the final answer ",
+          "after reasoning."
+        ]
+      }
+    }
+  ]
+}

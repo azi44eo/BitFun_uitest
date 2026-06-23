@@ -1,0 +1,17 @@
+{
+  "scenario_id": "long_task_child",
+  "description": "Delayed child response used by long_task_demo background Task execution.",
+  "mode": "chat_completions",
+  "stream": false,
+  "turns": [
+    {
+      "assistant": {
+        "thinking": [
+          "Keep the background subagent active long enough for notification-center assertions."
+        ],
+        "delay_ms": 12000,
+        "final_text": "Background long task child completed."
+      }
+    }
+  ]
+}

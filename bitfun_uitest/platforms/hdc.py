@@ -36,6 +36,9 @@ class HdcClient:
     def shell(self, command: str, *, timeout: int = 30) -> str:
         return self.run("shell", command, timeout=timeout)
 
+    def file_send(self, local: str, remote: str, *, timeout: int = 120) -> None:
+        self.run("file", "send", local, remote, timeout=timeout)
+
     def fport(self, local_tcp_port: int, remote: str) -> None:
         self.run("fport", f"tcp:{local_tcp_port}", remote, timeout=10)
 
@@ -43,4 +46,12 @@ class HdcClient:
         self.run("rport", f"tcp:{device_tcp_port}", f"tcp:{host_tcp_port}", timeout=10)
 
     def remove_rport(self, device_tcp_port: int) -> None:
-        self.run("rport", "rm", f"tcp:{device_tcp_port}", check=False, timeout=10)
+        rules = self.run("fport", "ls", check=False, timeout=10)
+        needle = f"tcp:{device_tcp_port}"
+        for line in rules.splitlines():
+            parts = line.strip().split()
+            if len(parts) < 4 or parts[-1] != "[Reverse]":
+                continue
+            if parts[1] != needle:
+                continue
+            self.run("fport", "rm", parts[1], parts[2], check=False, timeout=10)

@@ -1,0 +1,38 @@
+{
+  "scenario_id": "long_task_demo",
+  "description": "Starts a real BitFun Task tool call so notification-center active task UI can be exercised through the product path.",
+  "mode": "chat_completions",
+  "stream": false,
+  "turns": [
+    {
+      "assistant": {
+        "thinking": [
+          "Start a deterministic background subagent through the real Task tool."
+        ],
+        "tool_calls": [
+          {
+            "id": "call_task_mock_long_task",
+            "name": "Task",
+            "arguments": {
+              "description": "E2E notification active task",
+              "subagent_type": "Explore",
+              "prompt": "[MOCK_SCENARIO]\nid=long_task_child\n[/MOCK_SCENARIO]\nInspect the BitFun test project and return a short deterministic result.",
+              "run_in_background": true,
+              "timeout_seconds": 30
+            }
+          }
+        ],
+        "final_text": ""
+      }
+    },
+    {
+      "assistant": {
+        "thinking": [
+          "The Task tool accepted the background subagent request.",
+          "Return the deterministic final answer for the notification demo."
+        ],
+        "final_text": "Long task background task started."
+      }
+    }
+  ]
+}
