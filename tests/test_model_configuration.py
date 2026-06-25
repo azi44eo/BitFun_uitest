@@ -4,6 +4,13 @@ import time
 
 import pytest
 
+from tests.model_locator_helpers import (
+    click_settings_model_option,
+    wait_for_saved_model_row,
+    wait_for_saved_model_status,
+    wait_for_visible_chat_model_option,
+)
+
 
 OPENBITFUN_MODELS = ("deepseek-v4-pro", "glm-5.1")
 
@@ -46,8 +53,7 @@ def configure_openbitfun_models_if_needed(ui, api_key: str) -> None:
     ui.click_by_test_id("settings-model-select-btn")
 
     for model in OPENBITFUN_MODELS:
-        ui.wait_for_test_id("settings-model-option", timeout=90, attrs={"model-name": model})
-        ui.click_by_test_id("settings-model-option", attrs={"model-name": model})
+        click_settings_model_option(ui, model, timeout=90)
 
     ui.click_by_test_id("settings-model-save-btn")
 
@@ -70,15 +76,8 @@ def needs_initial_model_configuration(ui, timeout: float = 20.0) -> bool:
 def assert_saved_models_succeeded(ui) -> None:
     ui.wait_for_test_id("settings-model-list", timeout=20)
     for model in OPENBITFUN_MODELS:
-        row = ui.wait_for_test_id("settings-model-row", timeout=30, attrs={"model-name": model})
-        assert row.visible
-
-        status = ui.wait_for_test_id(
-            "settings-model-test-status",
-            timeout=120,
-            attrs={"model-name": model, "status": "success"},
-        )
-        assert status.visible
+        wait_for_saved_model_row(ui, model, timeout=30)
+        wait_for_saved_model_status(ui, model, status="success", timeout=120)
 
 
 def assert_models_visible_in_claw_selector(ui) -> None:
@@ -90,5 +89,4 @@ def assert_models_visible_in_claw_selector(ui) -> None:
     ui.wait_for_test_id("chat-model-selector-menu")
 
     for model in OPENBITFUN_MODELS:
-        option = ui.wait_for_test_id("chat-model-selector-option", attrs={"model-name": model})
-        assert option.visible
+        wait_for_visible_chat_model_option(ui, model, timeout=30)

@@ -6,6 +6,14 @@ import urllib.request
 
 import pytest
 
+from tests.model_locator_helpers import (
+    click_chat_model_option,
+    click_settings_model_option,
+    wait_for_saved_model_row,
+    wait_for_saved_model_status,
+    wait_for_selected_model_draft,
+)
+
 
 MOCK_MODEL_NAME = "bitfun-mock"
 MOCK_PROVIDER_NAME = "BitFun Mock LLM"
@@ -176,8 +184,7 @@ def configure_mock_model_in_bitfun(ui, mock_llm_server_session) -> None:
     ui.fill_by_test_id("settings-model-base-url-input", mock_llm_server_session["bitfun_base_url"])
     ui.fill_by_test_id("settings-model-manual-name-input", MOCK_MODEL_NAME)
     ui.click_by_test_id("settings-model-add-custom-btn")
-    selected = ui.wait_for_test_id("settings-model-selected-row", attrs={"model-name": MOCK_MODEL_NAME}, timeout=15)
-    assert selected.visible
+    wait_for_selected_model_draft(ui, MOCK_MODEL_NAME, timeout=15)
     ui.click_by_test_id("settings-model-save-btn")
     wait_for_model_success(ui, MOCK_MODEL_NAME)
 
@@ -202,10 +209,8 @@ def configure_mock_model_from_models_api(
     ui.fill_by_test_id("settings-model-base-url-input", mock_llm_server_session["bitfun_base_url"])
     ui.click_by_test_id("settings-model-select-btn")
     ui.wait_for_test_id("settings-model-select-menu", timeout=30)
-    ui.wait_for_test_id("settings-model-option", attrs={"model-name": model_name}, timeout=30)
-    ui.click_by_test_id("settings-model-option", attrs={"model-name": model_name})
-    selected = ui.wait_for_test_id("settings-model-selected-row", attrs={"model-name": model_name}, timeout=30)
-    assert selected.visible
+    click_settings_model_option(ui, model_name, timeout=30)
+    wait_for_selected_model_draft(ui, model_name, timeout=30)
     ui.click_by_test_id("settings-model-save-btn")
     wait_for_model_success(ui, model_name)
 
@@ -229,25 +234,23 @@ def open_session_scene(ui) -> None:
 def select_chat_model(ui, model: str) -> None:
     ui.click_by_test_id("chat-model-selector-btn")
     ui.wait_for_test_id("chat-model-selector-menu")
-    ui.click_by_test_id("chat-model-selector-option", attrs={"model-name": model})
+    click_chat_model_option(ui, model, timeout=30)
 
 
 def model_row_exists(ui, model: str) -> bool:
-    return ui.find_by_test_id("settings-model-row", attrs={"model-name": model}) is not None
+    try:
+        wait_for_saved_model_row(ui, model, timeout=1.5)
+    except AssertionError:
+        return False
+    return True
 
 
 def wait_for_model_success(ui, model: str) -> None:
-    row = ui.wait_for_test_id("settings-model-row", timeout=30, attrs={"model-name": model})
-    assert row.visible
+    wait_for_saved_model_row(ui, model, timeout=30)
     if ui.find_by_test_id("settings-model-test-status", attrs={"model-name": model}) is None:
         return
 
-    status = ui.wait_for_test_id(
-        "settings-model-test-status",
-        timeout=120,
-        attrs={"model-name": model, "status": "success"},
-    )
-    assert status.visible
+    wait_for_saved_model_status(ui, model, status="success", timeout=120)
 
 
 def wait_for_body_text(ui, text: str, timeout: float = 30.0) -> None:
