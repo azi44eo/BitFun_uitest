@@ -2,7 +2,7 @@
 
 # BitFun System E2E Cases
 
-This document defines 12 end-to-end system test cases in an automation-ready
+This document defines 13 end-to-end system test cases in an automation-ready
 format. Each case is scoped so it can be implemented with deterministic test
 data, stable locators, and clear cleanup expectations.
 
@@ -464,3 +464,46 @@ Missing items:
 1. The shell entry opens the shell panel successfully.
 2. The shell panel becomes visible instead of staying hidden in the DOM only.
 3. The shell panel header/title renders correctly after opening.
+
+## E2E-013 Mock Artifact Card Expansion
+
+Status:
+
+`Ready`
+
+Missing items:
+
+- None blocking for implementing card expansion assertions.
+- Product-side rendering issues should fail this case instead of being treated as locator blockers.
+
+### Preconditions
+
+1. A mock model is already configured and selectable in the session scene.
+2. The mock server exposes:
+   `shell_command_demo`, `file_change_demo`, and `miniapp_demo`.
+3. Required locators already exist:
+   `chat-shell-command-card`, `chat-shell-command-toggle`,
+   `chat-shell-command-text`, `chat-shell-command-output`,
+   `chat-shell-command-exit-code`,
+   `chat-file-change-card`, `chat-file-change-toggle`,
+   `chat-file-change-path`, `chat-file-change-action`,
+   `chat-file-change-preview`,
+   `chat-miniapp-card`, `chat-miniapp-title`,
+   `chat-miniapp-file-list`, `chat-miniapp-file-row`.
+
+### Execution Steps
+
+1. Open the session scene and select the mock model.
+2. Send the `shell_command_demo` prompt.
+3. Wait for the shell result card, expand it, and verify command text, output, and exit code.
+4. Send the `file_change_demo` prompt.
+5. Wait for the file change card, expand it, and verify file path, action, and preview.
+6. Send the `miniapp_demo` prompt.
+7. Wait for the miniapp card, expand it, and verify title, file list, and file row.
+
+### Expected Results
+
+1. Each artifact card is rendered in the conversation after its corresponding mock scenario finishes.
+2. Expanding a collapsed card reveals the expected detail region instead of leaving it hidden.
+3. Shell command output, file preview content, and miniapp file list all render correctly after expansion.
+4. If any artifact card fails to render or expand, the case fails instead of silently skipping.

@@ -18,6 +18,7 @@ from tests.test_mock_llm_oh_demo import (
     MOCK_MODEL_NAME,
     MODELS_API_MODEL_NAME,
     MODELS_API_PROVIDER_NAME,
+    SHELL_COMMAND_FINAL_TEXT,
     SIMPLE_ANSWER_TEXT,
     THINKING_FINAL_TEXT,
     TOOL_TRACE_FINAL_TEXT,
@@ -45,6 +46,7 @@ OH_ASSISTANT_WORKSPACE_ID = "local_0a25b4b7cd8739dd14dbbc3cfa68c593"
 OH_ASSISTANT_WORKSPACE_VISIBLE_DIR = f"{OH_APP_HOME_VISIBLE_DIR}/.bitfun/personal_assistant/workspace"
 OH_ASSISTANT_WORKSPACE_SHELL_DIR = f"{OH_APP_HOME_SHELL_DIR}/.bitfun/personal_assistant/workspace"
 GITCODE_WORKSPACE_NAMES = ("bitfun-test-project-a", "bitfun-test-project-b")
+CARD_INTERACTION_PAUSE_SECONDS = float(os.environ.get("BITFUN_CARD_INTERACTION_PAUSE_SECONDS", "0"))
 
 
 @pytest.fixture
@@ -105,7 +107,20 @@ def test_e2e_001_mock_session_interaction(ui, ready_mock_model):
 
     send_prompt_and_wait(ui, "[MOCK_SCENARIO]\nid=thinking_panel_demo\n[/MOCK_SCENARIO]", THINKING_FINAL_TEXT, timeout=120)
     ui.wait_for_test_id("chat-thinking-panel", timeout=15)
+    ui.wait_for_test_id("chat-thinking-toggle", timeout=15)
     ui.wait_for_test_id("chat-thinking-content", timeout=15)
+    exercise_expand_collapse(ui, "chat-thinking-panel", "chat-thinking-toggle")
+    assert_input_ready(ui)
+
+    send_prompt_and_wait(ui, "[MOCK_SCENARIO]\nid=shell_command_demo\n[/MOCK_SCENARIO]", SHELL_COMMAND_FINAL_TEXT, timeout=120)
+    ui.wait_for_test_id("chat-explore-group", timeout=15)
+    ui.wait_for_test_id("chat-explore-group-toggle", timeout=15)
+    exercise_expand_collapse(
+        ui,
+        "chat-explore-group",
+        "chat-explore-group-toggle",
+        expanded_content_test_id="chat-explore-group-content",
+    )
     assert_input_ready(ui)
 
     send_prompt_and_wait(ui, "[MOCK_SCENARIO]\nid=tool_trace_demo\n[/MOCK_SCENARIO]", TOOL_TRACE_FINAL_TEXT, timeout=180)
@@ -614,6 +629,51 @@ def assert_input_ready(ui) -> None:
     input_area = ui.wait_for_test_id("chat-input-textarea", timeout=15)
     assert input_area.visible
     assert not input_area.disabled
+
+
+def exercise_expand_collapse(
+    ui,
+    card_test_id: str,
+    toggle_test_id: str,
+    *,
+    expanded_content_test_id: str | None = None,
+    timeout: float = 15.0,
+) -> None:
+    set_card_expanded(ui, card_test_id, toggle_test_id, expanded=False, timeout=timeout)
+    pause_for_card_observation()
+
+    set_card_expanded(ui, card_test_id, toggle_test_id, expanded=True, timeout=timeout)
+    if expanded_content_test_id:
+        ui.wait_for_test_id(expanded_content_test_id, timeout=timeout)
+    pause_for_card_observation()
+
+    set_card_expanded(ui, card_test_id, toggle_test_id, expanded=False, timeout=timeout)
+    pause_for_card_observation()
+
+
+def set_card_expanded(ui, card_test_id: str, toggle_test_id: str, *, expanded: bool, timeout: float) -> None:
+    expected = "true" if expanded else "false"
+    card = ui.wait_for_test_id(card_test_id, timeout=timeout)
+    if card.attributes.get("data-expanded") == expected:
+        return
+
+    ui.click_by_test_id(toggle_test_id)
+    wait_for_card_expanded(ui, card_test_id, expected=expected, timeout=timeout)
+
+
+def wait_for_card_expanded(ui, card_test_id: str, *, expected: str, timeout: float) -> None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        card = ui.find_by_test_id(card_test_id)
+        if card is not None and card.attributes.get("data-expanded") == expected:
+            return
+        time.sleep(0.2)
+    raise AssertionError(f"Timed out waiting for {card_test_id!r} data-expanded={expected!r}")
+
+
+def pause_for_card_observation() -> None:
+    if CARD_INTERACTION_PAUSE_SECONDS > 0:
+        time.sleep(CARD_INTERACTION_PAUSE_SECONDS)
 
 
 def wait_for_round_complete(ui, *, timeout: float) -> None:

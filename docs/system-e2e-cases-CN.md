@@ -460,3 +460,45 @@
 1. Shell 入口能够成功打开 Shell 面板。
 2. Shell 面板是真正变为可见状态，而不是仅存在隐藏 DOM。
 3. 打开后，Shell 面板标题可以正常渲染。
+## E2E-013 Mock 结果卡片展开
+
+状态：
+
+`Ready`
+
+当前仍需补充：
+
+- 当前没有阻塞卡片展开断言实现的 locator 缺项。
+- 如果产物卡片没有渲染出来，应视为产品问题并让用例失败，而不是当作 locator 缺失跳过。
+
+### 前置条件
+
+1. mock 模型已经配置完成，并且可以在会话中被选中。
+2. mock server 已提供以下场景：
+   `shell_command_demo`、`file_change_demo`、`miniapp_demo`。
+3. 已有以下 locator：
+   `chat-shell-command-card`、`chat-shell-command-toggle`、
+   `chat-shell-command-text`、`chat-shell-command-output`、
+   `chat-shell-command-exit-code`、
+   `chat-file-change-card`、`chat-file-change-toggle`、
+   `chat-file-change-path`、`chat-file-change-action`、
+   `chat-file-change-preview`、
+   `chat-miniapp-card`、`chat-miniapp-title`、
+   `chat-miniapp-file-list`、`chat-miniapp-file-row`。
+
+### 执行步骤
+
+1. 打开会话场景并选中 mock 模型。
+2. 发送 `shell_command_demo` prompt。
+3. 等待 shell 结果卡片出现，展开后验证命令文本、输出和退出码。
+4. 发送 `file_change_demo` prompt。
+5. 等待文件修改卡片出现，展开后验证文件路径、动作和预览内容。
+6. 发送 `miniapp_demo` prompt。
+7. 等待 miniapp 卡片出现，展开后验证标题、文件列表和文件行。
+
+### 预期结果
+
+1. 每个 mock 场景完成后，对应的结果卡片都会出现在会话中。
+2. 卡片在折叠状态下可以被正常展开，并显示详细内容区。
+3. 展开后，shell 输出、文件预览内容和 miniapp 文件列表都能正确渲染。
+4. 如果任意结果卡片没有渲染或无法展开，用例应直接失败，而不是静默跳过。

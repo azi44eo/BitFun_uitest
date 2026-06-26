@@ -216,10 +216,11 @@ def configure_mock_model_from_models_api(
 
 
 def open_settings_models(ui) -> None:
-    ui.click_by_test_id("nav-footer-more-btn")
-    ui.wait_for_test_id("nav-footer-menu")
-    ui.click_by_test_id("nav-footer-settings-item")
-    ui.wait_for_test_id("settings-nav", timeout=30)
+    if ui.find_by_test_id("settings-nav") is None:
+        ui.click_by_test_id("nav-footer-more-btn")
+        ui.wait_for_test_id("nav-footer-menu")
+        ui.click_by_test_id("nav-footer-settings-item")
+        ui.wait_for_test_id("settings-nav", timeout=30)
     ui.wait_for_test_id("settings-nav-tab", attrs={"settings-tab": "models"}, timeout=30)
     ui.click_by_test_id("settings-nav-tab", attrs={"settings-tab": "models"})
     ui.wait_for_test_id("settings-scene", attrs={"settings-tab": "models"}, timeout=30)
