@@ -417,39 +417,60 @@ def wait_for_visible_test_id(ui, test_id: str, *, timeout: float, attrs: dict[st
     raise AssertionError(f"data-testid={test_id!r} exists but did not become visible")
 
 
-def get_ui_font_size_level_index(ui) -> int | None:
+def get_ui_font_size_level_index(ui) -> str | None:
+    ui.wait_for_test_id("appearance-font-size-group", timeout=15)
     payload = ui.evaluate(
         """
         (() => {
-          const buttons = Array.from(document.querySelectorAll('.font-pref-panel__level-buttons > .font-pref-panel__level-btn'));
+          const buttons = Array.from(document.querySelectorAll('[data-testid="appearance-font-size-option"]'));
           if (!buttons.length) return null;
-          return buttons.findIndex((button) => button.getAttribute('aria-pressed') === 'true');
+          const active = buttons.find((button) =>
+            button.getAttribute('aria-pressed') === 'true' ||
+            button.getAttribute('data-selected') === 'true'
+          );
+          if (!active) return null;
+          return active.getAttribute('data-size-level') || active.getAttribute('data-font-level') || null;
         })()
         """
     )
-    return int(payload) if isinstance(payload, (int, float)) and int(payload) >= 0 else None
+    return payload if isinstance(payload, str) and payload else None
 
 
-def click_next_ui_font_size_level(ui, current_index: int | None) -> int | None:
+def click_next_ui_font_size_level(ui, current_index: str | None) -> str | None:
+    ui.wait_for_test_id("appearance-font-size-group", timeout=15)
     payload = ui.evaluate(
         f"""
         (() => {{
-          const buttons = Array.from(document.querySelectorAll('.font-pref-panel__level-buttons > .font-pref-panel__level-btn'))
-            .filter((button) => !button.disabled);
+          const buttons = Array.from(document.querySelectorAll('[data-testid="appearance-font-size-option"]'))
+            .filter((button) =>
+              !button.disabled &&
+              button.getAttribute('aria-disabled') !== 'true' &&
+              (button.getAttribute('data-size-level') || button.getAttribute('data-font-level')) !== 'custom'
+            );
           if (buttons.length < 2) return null;
-          const currentIndex = Number.isInteger({json.dumps(current_index)}) ? {json.dumps(current_index)} : -1;
-          const fallbackIndex = buttons.findIndex((button) => button.getAttribute('aria-pressed') === 'true');
-          const activeIndex = currentIndex >= 0 ? currentIndex : fallbackIndex;
-          const targetIndex = buttons.findIndex((_, index) => index !== activeIndex);
-          if (targetIndex < 0) return null;
-          const target = buttons[targetIndex];
+          const currentLevel = {json.dumps(current_index)};
+          const active = buttons.find((button) => {{
+            const level = button.getAttribute('data-size-level') || button.getAttribute('data-font-level');
+            return level === currentLevel;
+          }}) || buttons.find((button) =>
+            button.getAttribute('aria-pressed') === 'true' ||
+            button.getAttribute('data-selected') === 'true'
+          );
+          const activeLevel = active
+            ? (active.getAttribute('data-size-level') || active.getAttribute('data-font-level'))
+            : null;
+          const target = buttons.find((button) => {{
+            const level = button.getAttribute('data-size-level') || button.getAttribute('data-font-level');
+            return level && level !== activeLevel;
+          }});
+          if (!target) return null;
           target.scrollIntoView({{ block: 'center', inline: 'center' }});
           target.click();
-          return targetIndex;
+          return target.getAttribute('data-size-level') || target.getAttribute('data-font-level') || null;
         }})()
         """
     )
-    return int(payload) if isinstance(payload, (int, float)) and int(payload) >= 0 else None
+    return payload if isinstance(payload, str) and payload else None
 
 
 def click_first_visible_test_id(ui, test_id: str) -> bool:
