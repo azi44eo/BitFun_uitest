@@ -90,12 +90,28 @@ def _infer_turn_index(messages: object) -> int:
     if not isinstance(messages, list):
         return 0
 
-    for message in messages:
+    latest_marker_index = _latest_user_marker_index(messages)
+    relevant_messages = messages[latest_marker_index + 1 :] if latest_marker_index is not None else messages
+
+    for message in relevant_messages:
         if not isinstance(message, dict):
             continue
         if str(message.get("role") or "").lower() in {"tool", "function"}:
             return 1
     return 0
+
+
+def _latest_user_marker_index(messages: list[object]) -> int | None:
+    for index in range(len(messages) - 1, -1, -1):
+        message = messages[index]
+        if not isinstance(message, dict):
+            continue
+        if str(message.get("role") or "").lower() != "user":
+            continue
+        for text in _iter_message_text([message], user_only=True):
+            if MOCK_BLOCK_RE.search(text):
+                return index
+    return None
 
 
 def _parse_control_block(block: str) -> dict[str, str]:

@@ -18,6 +18,7 @@ from tests.test_mock_llm_oh_demo import (
     MOCK_MODEL_NAME,
     MODELS_API_MODEL_NAME,
     MODELS_API_PROVIDER_NAME,
+    FILE_CHANGE_FINAL_TEXT,
     SHELL_COMMAND_FINAL_TEXT,
     SIMPLE_ANSWER_TEXT,
     THINKING_FINAL_TEXT,
@@ -46,7 +47,6 @@ OH_ASSISTANT_WORKSPACE_ID = "local_0a25b4b7cd8739dd14dbbc3cfa68c593"
 OH_ASSISTANT_WORKSPACE_VISIBLE_DIR = f"{OH_APP_HOME_VISIBLE_DIR}/.bitfun/personal_assistant/workspace"
 OH_ASSISTANT_WORKSPACE_SHELL_DIR = f"{OH_APP_HOME_SHELL_DIR}/.bitfun/personal_assistant/workspace"
 GITCODE_WORKSPACE_NAMES = ("bitfun-test-project-a", "bitfun-test-project-b")
-CARD_INTERACTION_PAUSE_SECONDS = float(os.environ.get("BITFUN_CARD_INTERACTION_PAUSE_SECONDS", "0"))
 
 
 @pytest.fixture
@@ -120,6 +120,17 @@ def test_e2e_001_mock_session_interaction(ui, ready_mock_model):
         "chat-explore-group",
         "chat-explore-group-toggle",
         expanded_content_test_id="chat-explore-group-content",
+    )
+    assert_input_ready(ui)
+
+    send_prompt_and_wait(ui, "[MOCK_SCENARIO]\nid=file_change_demo\n[/MOCK_SCENARIO]", FILE_CHANGE_FINAL_TEXT, timeout=120)
+    ui.wait_for_test_id("chat-file-change-card", timeout=15)
+    ui.wait_for_test_id("chat-file-change-toggle", timeout=15)
+    exercise_expand_collapse(
+        ui,
+        "chat-file-change-card",
+        "chat-file-change-toggle",
+        expanded_content_test_id="chat-file-change-preview",
     )
     assert_input_ready(ui)
 
@@ -661,15 +672,13 @@ def exercise_expand_collapse(
     timeout: float = 15.0,
 ) -> None:
     set_card_expanded(ui, card_test_id, toggle_test_id, expanded=False, timeout=timeout)
-    pause_for_card_observation()
 
     set_card_expanded(ui, card_test_id, toggle_test_id, expanded=True, timeout=timeout)
     if expanded_content_test_id:
-        ui.wait_for_test_id(expanded_content_test_id, timeout=timeout)
-    pause_for_card_observation()
+        expanded_content = ui.wait_for_test_id(expanded_content_test_id, timeout=timeout)
+        assert expanded_content.visible
 
     set_card_expanded(ui, card_test_id, toggle_test_id, expanded=False, timeout=timeout)
-    pause_for_card_observation()
 
 
 def set_card_expanded(ui, card_test_id: str, toggle_test_id: str, *, expanded: bool, timeout: float) -> None:
@@ -690,11 +699,6 @@ def wait_for_card_expanded(ui, card_test_id: str, *, expected: str, timeout: flo
             return
         time.sleep(0.2)
     raise AssertionError(f"Timed out waiting for {card_test_id!r} data-expanded={expected!r}")
-
-
-def pause_for_card_observation() -> None:
-    if CARD_INTERACTION_PAUSE_SECONDS > 0:
-        time.sleep(CARD_INTERACTION_PAUSE_SECONDS)
 
 
 def wait_for_round_complete(ui, *, timeout: float) -> None:

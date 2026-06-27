@@ -425,6 +425,45 @@ def test_parse_chat_request_uses_latest_user_mock_marker():
     assert parsed.turn_index == 0
 
 
+def test_parse_chat_request_ignores_previous_scenario_tool_results():
+    from bitfun_mock_llm_server.request_parser import parse_chat_request
+
+    payload = {
+        "model": "bitfun-mock",
+        "stream": False,
+        "messages": [
+            {
+                "role": "user",
+                "content": "[MOCK_SCENARIO]\nid=shell_command_demo\n[/MOCK_SCENARIO]",
+            },
+            {
+                "role": "assistant",
+                "tool_calls": [
+                    {
+                        "id": "call_bash_mock_status",
+                        "type": "function",
+                        "function": {"name": "Bash", "arguments": "{}"},
+                    }
+                ],
+            },
+            {
+                "role": "tool",
+                "tool_call_id": "call_bash_mock_status",
+                "content": "M README.md",
+            },
+            {
+                "role": "user",
+                "content": "[MOCK_SCENARIO]\nid=file_change_demo\n[/MOCK_SCENARIO]",
+            },
+        ],
+    }
+
+    parsed = parse_chat_request(payload, default_scenario_id=None)
+
+    assert parsed.scenario_id == "file_change_demo"
+    assert parsed.turn_index == 0
+
+
 def _error_then_success_payload(run_id: str) -> dict[str, Any]:
     return {
         "model": "bitfun-mock",

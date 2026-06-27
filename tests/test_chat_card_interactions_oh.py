@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import time
 
 from tests.test_mock_llm_oh_demo import (
@@ -12,8 +11,6 @@ from tests.test_mock_llm_oh_demo import (
     select_chat_model,
 )
 from tests.test_system_e2e_ready import ready_mock_model, send_prompt_and_wait
-
-OBSERVE_PAUSE_SECONDS = float(os.environ.get("BITFUN_CARD_INTERACTION_PAUSE_SECONDS", "1.0"))
 
 
 def test_chat_thinking_panel_can_expand_and_collapse(ui, ready_mock_model):
@@ -89,15 +86,13 @@ def exercise_expand_collapse(
     timeout: float = 15.0,
 ) -> None:
     set_card_expanded(ui, card_test_id, toggle_test_id, expanded=False, timeout=timeout)
-    time.sleep(OBSERVE_PAUSE_SECONDS)
 
     set_card_expanded(ui, card_test_id, toggle_test_id, expanded=True, timeout=timeout)
     if expanded_content_test_id:
-        ui.wait_for_test_id(expanded_content_test_id, timeout=timeout)
-    time.sleep(OBSERVE_PAUSE_SECONDS)
+        expanded_content = ui.wait_for_test_id(expanded_content_test_id, timeout=timeout)
+        assert expanded_content.visible
 
     set_card_expanded(ui, card_test_id, toggle_test_id, expanded=False, timeout=timeout)
-    time.sleep(OBSERVE_PAUSE_SECONDS)
 
 
 def set_card_expanded(
