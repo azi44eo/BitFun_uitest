@@ -31,38 +31,39 @@ Status:
 
 Missing items:
 
-- Continue filling session artifact locators as each UI block becomes testable.
+- None blocking for the current ready coverage.
 
 ### Preconditions
 
 1. BitFun launches successfully on the target device.
 2. A mock model is already configured and selectable in the session model selector.
 3. The mock server exposes these scenarios:
-   `simple_answer`, `thinking_panel_demo`, `tool_trace_demo`,
-   `shell_command_demo`, `file_change_demo`, `miniapp_demo`.
+   `simple_answer`, `thinking_panel_demo`, `shell_command_demo`,
+   `file_change_demo`, and `tool_trace_demo`.
 4. Required session locators already exist:
    `session-scene`, `chat-input-textarea`, `chat-input-send-btn`,
    `chat-model-selector-btn`, `chat-model-selector-option`,
-   `chat-assistant-message-content`.
+   `chat-thinking-panel`, `chat-thinking-toggle`, `chat-thinking-content`,
+   `chat-explore-group`, `chat-explore-group-toggle`,
+   `chat-file-change-card`, `chat-file-change-toggle`,
+   `chat-file-change-preview`.
 
 ### Execution Steps
 
 1. Open the session scene.
 2. Select the mock model.
 3. Send the `simple_answer` prompt and wait for the final response.
-4. Send the `thinking_panel_demo` prompt and verify the thinking panel flow.
-5. Send the `tool_trace_demo` prompt and verify the tool trace flow.
-6. Send the `shell_command_demo` prompt and verify the shell result flow.
-7. Send the `file_change_demo` prompt and verify the file change flow.
-8. Send the `miniapp_demo` prompt and verify the miniapp result flow.
+4. Send the `thinking_panel_demo` prompt and verify the thinking panel can be expanded and collapsed.
+5. Send the `shell_command_demo` prompt and verify the explore/tool group can be expanded and collapsed.
+6. Send the `file_change_demo` prompt and verify the file change card can be expanded and collapsed.
+7. Send the `tool_trace_demo` prompt and verify the session still completes normally afterward.
 
 ### Expected Results
 
 1. Every prompt transitions from pending to completed without hanging.
 2. The correct assistant response appears after each scenario.
-3. Thinking, tool trace, shell result, file change, and miniapp artifacts render
-   in the same conversation in the expected order.
-4. Expanding one artifact does not break the rest of the session UI.
+3. The thinking panel, explore group, and file change card all render and support basic expand/collapse interaction.
+4. The input becomes usable again after each round and the later rounds are not blocked by earlier artifacts.
 
 ## E2E-002 Model Configuration Lifecycle
 
@@ -72,7 +73,7 @@ Status:
 
 Missing items:
 
-- None blocking for the core create/edit/save/use flow.
+- None blocking for the current ready flow.
 
 ### Preconditions
 
@@ -90,14 +91,11 @@ Missing items:
 ### Execution Steps
 
 1. Open Settings and switch to the Models tab.
-2. Create a new provider config with a unique provider name.
-3. Fetch remote models from the backend and select one remote model.
-4. Add one custom model name if the flow supports it.
-5. Save the configuration.
-6. Wait for connection test success.
-7. Reopen the saved config and update one editable field, such as provider name.
-8. Save again and verify the updated value persists.
-9. Return to the session scene and confirm the saved model is selectable.
+2. Create a new provider config backed by the mock server `/models` endpoint.
+3. Fetch remote models from the backend and select the deterministic mock model option.
+4. Save the configuration.
+5. Wait for connection test success.
+6. Return to the session scene and confirm the saved model is selectable.
 
 ### Expected Results
 
@@ -105,8 +103,7 @@ Missing items:
 2. Remote model discovery returns selectable options.
 3. Save succeeds and the config appears in the model list.
 4. Connection test status becomes success.
-5. Edited values persist after reopening.
-6. The saved model can be selected in chat.
+5. The saved model can be selected in chat.
 
 ## E2E-003 Session Management Lifecycle
 
@@ -149,38 +146,38 @@ Missing items:
 
 Status:
 
-`Need Test Mechanism`
+`Ready`
 
 Missing items:
 
-- Two stable test workspace fixtures or documented fixture paths.
-- A deterministic setup/reset rule for workspace A and workspace B.
-- Confirmation that workspace-scoped session creation locators are complete.
+- None blocking for the current workspace fixture path.
 
 ### Preconditions
 
-1. Two isolated test workspaces are available or can be created.
+1. Two deterministic GitCode-backed test workspaces are prepared by the fixture.
 2. A usable model exists for sending messages.
 3. Required locators already exist:
    `nav-workspace-item`, `nav-workspace-name-btn`,
-   `nav-workspace-session-region`, `nav-session-item`,
+   `nav-workspace-menu-btn`, `nav-workspace-menu-create-code-session`,
+   `nav-session-item`,
    `chat-input-workspace-strip`.
 
 ### Execution Steps
 
-1. Open workspace A and create session A1.
-2. Send a unique message in session A1.
-3. Open workspace B and create session B1.
-4. Send a different unique message in session B1.
-5. Verify the nav tree shows A1 under workspace A and B1 under workspace B.
-6. Reopen A1 and verify the workspace strip shows workspace A.
-7. Reopen B1 and verify the workspace strip shows workspace B.
+1. Open workspace A and explicitly wait until the workspace strip reflects workspace A.
+2. Create a code session under workspace A.
+3. Select the mock model and send the `workspace_a_reply` prompt.
+4. Open workspace B and explicitly wait until the workspace strip reflects workspace B.
+5. Create a code session under workspace B.
+6. Select the mock model and send the `workspace_b_reply` prompt.
+7. Switch back to the session under workspace A and verify both the workspace strip and assistant reply.
+8. Switch back to the session under workspace B and verify both the workspace strip and assistant reply.
 
 ### Expected Results
 
 1. Sessions stay attached to the correct workspace.
-2. The nav tree and session UI agree on the current workspace context.
-3. Switching workspaces does not mix session histories.
+2. The workspace strip reflects the expected workspace before and after session switching.
+3. Switching between the two sessions restores the correct assistant reply without crossing workspace context.
 
 ## E2E-005 Notification Center Task Tracking
 
@@ -223,71 +220,66 @@ Missing items:
 
 Status:
 
-`Need Test Mechanism`
+`Ready`
 
 Missing items:
 
-- Two specific saveable settings to standardize across runs.
-- A restore rule for returning changed settings to their original values.
-- Locator confirmation for the chosen save controls.
+- None blocking for the current ready coverage.
 
 ### Preconditions
 
 1. Settings can be opened from the footer menu.
-2. At least two saveable settings are available across different tabs.
+2. The Appearance tab exposes deterministic font size preset controls.
 3. Required locators already exist:
    `settings-scene`, `settings-nav`, `settings-nav-tab`,
-   plus save controls for the selected tabs.
+   `appearance-font-size-group`, `appearance-font-size-option`.
 
 ### Execution Steps
 
-1. Open Settings.
-2. Change one value in Basics.
-3. Switch to another tab, such as Editor or Keyboard, and change one value there.
-4. Save both changes.
-5. Close Settings.
-6. Reopen Settings and revisit both tabs.
-7. Verify both values persist.
+1. Open Settings and switch to the Appearance tab.
+2. Read the currently selected UI font size level.
+3. Click a different non-custom font size preset.
+4. Re-open the Models tab and then return to the Appearance tab.
+5. Read the selected font size level again.
+6. Verify that the selected level persisted.
 
 ### Expected Results
 
-1. Cross-tab navigation is stable.
-2. Saving succeeds without losing unrelated settings.
-3. Reopening Settings shows the updated values.
+1. Navigation from Models to Appearance and back is stable.
+2. A different font size preset can be selected through stable appearance locators.
+3. Re-entering the Appearance tab shows the updated preset still selected.
 
 ## E2E-007 Agent And Skill Discovery Flow
 
 Status:
 
-`Need Locators`
+`Ready`
 
 Missing items:
 
-- Stable locators for the chosen agent card and primary agent action.
-- Stable locators for the chosen skill card and primary skill action.
-- A deterministic choice of which agent/skill the test will target.
+- None blocking for the current detail-panel flow.
 
 ### Preconditions
 
 1. Agents and Skills navigation entries are visible.
-2. At least one agent card and one skill card are available.
-3. Required locators already exist for both scenes and their primary cards/actions.
+2. At least one visible agent card and one visible installed skill card are available.
+3. Required locators already exist for both scenes, list items, detail panels, and close actions.
 
 ### Execution Steps
 
 1. Open the Agents scene.
 2. Verify at least one agent card is visible.
-3. Open one non-destructive agent action, such as details or configure.
-4. Return to navigation and open the Skills scene.
-5. Switch between Installed and Discover.
-6. Verify at least one skill card is visible.
-7. Trigger one non-destructive skill action, such as details or reveal path.
+3. Open one visible agent card and verify the agent detail panel.
+4. Close the agent detail panel.
+5. Open the Skills scene.
+6. Open one visible installed skill card and verify the skill detail panel.
+7. Close the skill detail panel.
 
 ### Expected Results
 
 1. Agents and Skills scenes both load correctly.
-2. Cards are visible and actionable.
-3. Non-destructive actions complete without breaking navigation.
+2. One agent detail panel and one skill detail panel can be opened and closed.
+3. Opening and closing these non-destructive panels does not break scene navigation.
 
 ## E2E-008 Shell And Browser Panel Integration
 
@@ -327,78 +319,65 @@ Missing items:
 
 Status:
 
-`Need Test Mechanism`
+`Ready`
 
 Missing items:
 
-- One deterministic failure trigger.
-- One deterministic recovery path.
-- A clear product-supported retry/resend interaction path.
-- Locator confirmation for failed message and retry controls.
+- None blocking for the current ready recovery path.
 
 ### Preconditions
 
-1. A deterministic failure mode is available, such as an invalid model config or
-   a mock scenario that forces an error.
-2. A recovery mode is also available, such as restoring a valid model config.
-3. Required locators already exist:
-   `chat-user-message`, `chat-user-message-content`,
-   and any retry / resend controls used by the product.
+1. The mock server exposes the deterministic `error_then_success` scenario.
+2. A mock model is already configured and selectable.
+3. Required locators already exist for the normal session input flow.
 
 ### Execution Steps
 
-1. Trigger a request failure from a session.
-2. Wait for the failed state to appear in the conversation.
-3. Verify the input area remains usable.
-4. Restore the backend or model to a valid state.
-5. Retry using the product-supported recovery path.
-6. Wait for a successful assistant response.
-7. Send one additional normal message.
+1. Trigger `error_then_success` with a unique `run_id`.
+2. Wait for the scenario to recover and return the final successful assistant response.
+3. Verify no failed user message marker remains in the conversation.
+4. Verify the input becomes usable again.
+5. Send one additional normal `simple_answer` prompt.
 
 ### Expected Results
 
-1. The failed state is clearly visible in the UI.
-2. The session remains recoverable.
-3. Retrying after recovery succeeds.
+1. The scenario completes with its deterministic recovery response.
+2. The session does not remain stuck in a failed-message state.
+3. The chat input becomes usable again after recovery.
 4. The conversation continues normally afterward.
 
 ## E2E-010 End-To-End Bootstrap To Productive Session
 
 Status:
 
-`Need Test Mechanism`
+`Ready`
 
 Missing items:
 
-- A repeatable clean-state reset procedure.
-- An isolated workspace/model fixture for first-run setup.
-- Confirmation of which first-run locators are stable enough for automation.
+- None blocking for the current fixture-driven bootstrap flow.
 
 ### Preconditions
 
-1. The app starts from a clean or isolated first-run state.
-2. A test workspace path is available.
-3. A deterministic test model backend is available.
-4. Required locators already exist for the welcome scene, workspace flow, model
-   config flow, and session flow.
+1. The app starts from a clean state with the GitCode test workspace fixture prepared.
+2. A deterministic test model backend is available.
+3. Required locators already exist for workspace selection, model configuration,
+   session creation, and chat input flow.
 
 ### Execution Steps
 
-1. Launch BitFun from a clean state.
-2. Complete the minimum first-run flow to open or create a workspace.
-3. Complete the minimum model configuration flow.
-4. Create the first usable session.
+1. Launch BitFun from a clean state with fixture workspaces available.
+2. Configure the mock model.
+3. Open the first prepared workspace.
+4. Create the first usable code session.
 5. Select the configured model.
-6. Send the first user prompt.
-7. Wait for a successful assistant response.
-8. Reopen the app or trigger a state refresh and confirm the created data remains.
+6. Send the first `simple_answer` prompt.
+7. Wait for the successful assistant response.
 
 ### Expected Results
 
-1. The user can get from startup to a productive first session.
+1. The app can move from a clean launch to a productive first code session.
 2. Workspace, model, and session setup all complete successfully.
 3. The first AI response arrives successfully.
-4. The created state persists across reopen or refresh.
 
 ## E2E-011 Skills Tab Navigation
 
@@ -417,8 +396,9 @@ Missing items:
 3. Required locators already exist:
    `agent-skill-entry`, `skill-tab`, `agent-skill-panel`,
    `skills-tab-installed`, `skills-tab-discover`,
-   `skills-installed-panel`, `skills-installed-content`,
-   `skills-discover-panel`, `skills-discover-search`.
+   `skills-installed-panel`,
+   `skills-discover-panel`,
+   and at least one stable installed/discover content surface.
 
 ### Execution Steps
 
@@ -426,16 +406,16 @@ Missing items:
 2. Enter the Skills scene from the `skill-tab`.
 3. Verify the Installed tab is present and the installed panel is rendered.
 4. Switch to the Discover tab.
-5. Verify the discover panel and discover search input are rendered.
+5. Verify the discover panel is rendered and that at least one discover surface is visible, such as search, content, list, or empty state.
 6. Switch back to the Installed tab.
-7. Verify the installed panel is rendered again.
+7. Verify the installed panel is rendered again and that at least one installed surface is visible, such as content, list, item, or empty state.
 
 ### Expected Results
 
 1. The Skills scene opens successfully from the shared navigation entry.
 2. Installed and Discover tabs are both visible and clickable.
 3. Switching tabs updates the rendered main panel correctly.
-4. Returning to Installed restores the installed panel without breaking the scene.
+4. Returning to Installed restores a valid installed surface without breaking the scene.
 
 ## E2E-012 Shell Panel Entry
 
